@@ -603,6 +603,7 @@ let lang = "en";
 try { const v = localStorage.getItem("silk-lang"); if(v==="zh"||v==="en") lang = v; } catch(e){}
 let langMix = lang==="zh" ? 1 : 0;
 let sp = 0, spV = 0, start = 0, introP = 0, plateScene = -1;
+let dif = null, dctx = null;
 let PUSH = 0, velS = 0, pushS = 0, lastSp = 0, STIR = 0, FT = 0, trailSkip = true;
 let landed = -1, bleedK = -1, bleedT = 9;
 const ENDC = {
@@ -1020,10 +1021,13 @@ function computeInto(set, k, t, out, cA, cB, T){
     const u = 1 - e;
     let x = u*u*ax + 2*u*e*cx + e*e*bx, y = u*u*ay + 2*u*e*cy + e*e*by;
     if(sn > .001){
+      // carried twice by the current: the second step bends the first, so loose grain curls into tendrils
       const lift = sn*L*.7*MG[i]*(1 + STIR*.45);
       flow(x,y,T);
-      x += (FVX*.82 + LX[i]*.18)*lift;
-      y += (FVY*.82 + LY[i]*.18)*lift;
+      const hx = x + (FVX*.82 + LX[i]*.18)*lift*.5, hy = y + (FVY*.82 + LY[i]*.18)*lift*.5;
+      flow(hx,hy,T);
+      x = hx + (FVX*.88 + LX[i]*.12)*lift*.5;
+      y = hy + (FVY*.88 + LY[i]*.12)*lift*.5;
     }
     const zz = za + (zb-za)*e;
     const pk = PUSH*zz;
@@ -1170,8 +1174,10 @@ function frame(now){
       const il = clamp01((introT - DR[i]*.5)/.5), e = ease(il), sn = Math.sin(Math.PI*il), lift = sn*L*.55*MG[i];
       const bx = SX[i] + (x-SX[i])*e, by = SY[i] + (y-SY[i])*e;
       flow(bx,by,FT);
-      x = bx + (FVX*.8 + LX[i]*.2)*lift;
-      y = by + (FVY*.8 + LY[i]*.2)*lift;
+      const hx = bx + (FVX*.8 + LX[i]*.2)*lift*.5, hy = by + (FVY*.8 + LY[i]*.2)*lift*.5;
+      flow(hx,hy,FT);
+      x = hx + (FVX*.86 + LX[i]*.14)*lift*.5;
+      y = hy + (FVY*.86 + LY[i]*.14)*lift*.5;
       a = .06 + (a-.06)*e;
       if(sn > m) m = sn;
       if(il < .02) m = 1;
@@ -1208,6 +1214,14 @@ function frame(now){
   }
 
   // ink in water: moving grain is laid into a half-resolution buffer that slowly clears, leaving soft plumes
+  if(!reduce){
+    if(!dif || dif.width !== ink.width || dif.height !== ink.height){ dif = document.createElement("canvas"); dif.width = ink.width; dif.height = ink.height; dctx = dif.getContext("2d"); }
+    dctx.clearRect(0,0,dif.width,dif.height);
+    dctx.globalAlpha = .3; dctx.drawImage(ink, 0, 0);
+    dctx.globalAlpha = .27; dctx.drawImage(ink, -.6, -.3); dctx.drawImage(ink, .6, -.3); dctx.drawImage(ink, 0, -.75);
+    ictx.clearRect(0,0,ink.width,ink.height);
+    ictx.globalAlpha = 1; ictx.drawImage(dif, 0, 0);
+  }
   ictx.globalCompositeOperation = "destination-out";
   ictx.globalAlpha = 1; ictx.fillStyle = "rgba(0,0,0,.06)";
   ictx.fillRect(0,0,ink.width,ink.height);
