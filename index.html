@@ -938,7 +938,7 @@ function computeInto(set, k, t, out, cA, cB, T){
   }
 }
 
-let last = 0;
+let last = 0, lastY = scrollY, scrollVel = 0;
 function frame(now){
   requestAnimationFrame(frame);
   if(!built) return;
@@ -947,10 +947,14 @@ function frame(now){
   const T = now/1000;
 
   const target = Math.min(S-1, scrollY/segH);
-  sp = reduce ? target : sp + (target - sp)*Math.min(1, dt*3.6);
+  // the grain follows slowly on a gentle scroll and speeds up the harder you scroll
+  const sv = Math.abs(scrollY - lastY)/segH/Math.max(dt, 1e-3); lastY = scrollY;
+  scrollVel += (sv - scrollVel)*Math.min(1, dt*(sv > scrollVel ? 8 : 1.5));
+  const follow = 0.9 + Math.min(5.5, scrollVel*2.4);
+  sp = reduce ? target : sp + (target - sp)*Math.min(1, dt*follow);
   // the scroll closes on the painting it opened with, then quietly rolls back to the start
   if(sp > S-1.004 && scrollY >= (S-1)*segH - 2 && !touching){
-    scrollTo(0, 0); lastScrollY = 0;
+    scrollTo(0, 0); lastScrollY = 0; lastY = 0; scrollVel = 0;
     sp = 0; lastSp = 0; velS = 0; pushS = 0; PUSH = 0;
   }
   let k = Math.floor(sp), f = sp - k;
