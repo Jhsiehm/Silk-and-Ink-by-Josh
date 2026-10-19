@@ -139,7 +139,8 @@ const COPY = {
     idsa: ["IDSA + Design at GW", "Partnerships and founder events"],
     memory: ["Memory After Empire", "Under review"],
     honors: ["Palantir AIP Builder", "Anthropic, Claude API"],
-    hint: "scroll"
+    hint: "scroll",
+    hintTouch: "swipe up"
   },
   zh: {
     name:  ["謝家祥", "喬治華盛頓大學　國際事務"],
@@ -149,12 +150,16 @@ const COPY = {
     idsa: ["IDSA + Design，GW", "合作夥伴與創辦人活動"],
     memory: ["Memory After Empire", "審閱中"],
     honors: ["Palantir AIP 建構者認證", "Anthropic Claude API"],
-    hint: "捲動"
+    hint: "捲動",
+    hintTouch: "上滑"
   }
 };
 const MUSEUM = {en:"National Palace Museum, Taipei", zh:"國立故宮博物院"};
+const coarse = matchMedia("(pointer: coarse)").matches;
+const hintText = l => coarse ? COPY[l].hintTouch : COPY[l].hint;
 // Each painting stands for one of Guo Xi's three distances.
 const SCENES = [
+  {type:"river", key:"river", seed:3},
   {type:"art", map:"fankuan", cx:.66, fit:"h", scale:1.03, cam:"high", label:"高遠",
    credit:{en:"Fan Kuan, Travelers Among Mountains and Streams, c. 1000", zh:"范寬《谿山行旅圖》約一〇〇〇年"}},
   {type:"text", key:"name", seed:5},
@@ -309,6 +314,137 @@ function buildArt(s, k){
   for(let i=N-dustN;i<N;i++){ sc.x[i]=rng()*W; sc.y[i]=rng()*H; sc.a[i]=.04+rng()*.06; sc.s[i]=.7+rng()*.5; sc.r[i]=1; sc.z[i]=.05; sc.c[i]=2; }
   shuffleScene(sc, rng);
   return sc;
+}
+
+// ---------- The river: a fisherman drifting on ink let go in water ----------
+function riverY(x, T){
+  const A = Math.min(H, W*.9);   // a tall phone gets a gentler swell, so the boat doesn't pitch
+  return Math.sin(x*.0058 - T*.42 + .6)*A*.032 + Math.sin(x*.0139 - T*.77 + 2.1)*A*.013;
+}
+// the current is smooth, so the river reads it from a coarse grid made once a frame instead of per grain
+let FG = null;
+function buildFlowGrid(T){
+  const cs = 36, cols = Math.ceil(W*1.3/cs) + 2, rows = Math.ceil(H*1.2/cs) + 2;
+  if(!FG || FG.cols !== cols || FG.rows !== rows) FG = {cs, cols, rows, vx:new Float32Array(cols*rows), vy:new Float32Array(cols*rows)};
+  FG.x0 = -W*.15; FG.y0 = -H*.1;
+  for(let r=0, q=0; r<rows; r++) for(let c=0; c<cols; c++, q++){ flow(FG.x0 + c*cs, FG.y0 + r*cs, T); FG.vx[q] = FVX; FG.vy[q] = FVY; }
+}
+function flowS(x, y){
+  const g = FG;
+  let fx = (x - g.x0)/g.cs, fy = (y - g.y0)/g.cs;
+  fx = fx < 0 ? 0 : fx > g.cols - 1.001 ? g.cols - 1.001 : fx;
+  fy = fy < 0 ? 0 : fy > g.rows - 1.001 ? g.rows - 1.001 : fy;
+  const c = fx|0, r = fy|0, ax = fx - c, ay = fy - r, q = r*g.cols + c, q2 = q + g.cols;
+  FVX = (g.vx[q]*(1-ax) + g.vx[q+1]*ax)*(1-ay) + (g.vx[q2]*(1-ax) + g.vx[q2+1]*ax)*ay;
+  FVY = (g.vy[q]*(1-ax) + g.vy[q+1]*ax)*(1-ay) + (g.vy[q2]*(1-ax) + g.vy[q2+1]*ax)*ay;
+}
+function buildRiver(s, k){
+  const rng = mulberry32(777 + k*13);
+  const sc = newScene();
+  const m = density.icon_fisher;
+  const boatN = m ? Math.floor(N*.16) : 0, ripN = Math.floor(N*.045), plumeN = Math.floor(N*.2), dustN = Math.floor(N*.02);
+  const riverN = N - boatN - ripN - plumeN - dustN;
+  const bw = Math.min(W*.84, W < 700 ? 330 : 500), ps = m ? bw/m.w : 1;
+  const F = () => new Float32Array(N);
+  const R = sc.river = {
+    kind: new Uint8Array(N), cyc: new Int32Array(N), snap: new Uint8Array(N),
+    p: F(), q: F(), v: F(), w: F(), f: F(), e: F(), a0: F(), ink: F(),
+    cx: W*.5, cy: H*.52, bw, bh: m ? bw*m.h/m.w : 0
+  };
+  const NS = 9, band = H*.15;
+  let i = 0;
+  // the current: grain carried along in tendrils, quicker and darker down the middle, paler toward the banks
+  for(let j=0;j<riverN;j++,i++){
+    const st = (rng()*NS)|0, b = (st/(NS-1))*2 - 1, mid = 1 - Math.abs(b);
+    R.kind[i] = 0; R.p[i] = rng();
+    R.q[i] = b*band + (rng()+rng()+rng()-1.5)*H*.014;
+    R.v[i] = (34 + mid*52 + rng()*16)/(W*1.25);
+    R.w[i] = rng()*2 - 1; R.f[i] = .55 + mid*.55 + rng()*.2;
+    R.e[i] = H*(.008 + .02*rng()*(.5 + mid*.5));
+    const a = (.16 + .5*Math.pow(rng(), 1.4))*(.6 + .6*mid);
+    R.a0[i] = a; R.ink[i] = .4 + .45*rng()*(.4 + .6*mid);
+    sc.a[i] = a; sc.s[i] = .55 + rng()*.6; sc.r[i] = 1; sc.z[i] = .28;
+    sc.c[i] = a > .38 ? 1 : 2; if(rng() < .07) sc.c[i] = 0;
+  }
+  // plumes: ink lifting off the water and sinking into it, billowing out on the eddies and fading
+  for(let j=0;j<plumeN;j++,i++){
+    R.kind[i] = 4; R.p[i] = rng(); R.q[i] = rng(); R.v[i] = (30 + rng()*40)/(W*1.25);
+    R.w[i] = rng() < .62 ? -1 : 1; R.f[i] = 5.5 + rng()*6; R.e[i] = .5 + rng()*.8;
+    R.a0[i] = .22 + .45*Math.pow(rng(), 1.2); R.ink[i] = .7 + .3*rng();
+    sc.a[i] = 0; sc.s[i] = .6 + rng()*.7; sc.r[i] = 1; sc.z[i] = .22;
+    sc.c[i] = rng() < .3 ? 1 : 2; if(rng() < .05) sc.c[i] = 0;
+  }
+  // the fisherman, from the painting's own brushwork
+  if(m){
+    const n = m.d.length, cdf = new Float32Array(n); let acc = 0;
+    for(let q=0;q<n;q++){ const v = m.d[q]; acc += v > .05 ? Math.pow(v, 1.45) : 0; cdf[q] = acc; }
+    const sizeK = Math.max(.75, Math.min(1.5, ps*.6))*1.15;
+    let mx0 = 0, my0 = 0; const hx = [], hy = [], hv = [];
+    for(let j=0;j<boatN;j++){
+      const u = rng()*acc; let lo = 0, hi = n-1;
+      while(lo<hi){ const mid=(lo+hi)>>1; if(cdf[mid]<u) lo=mid+1; else hi=mid; }
+      const ix = lo % m.w, iy = (lo/m.w)|0;
+      hx.push((ix + rng())*ps); hy.push((iy + rng())*ps); hv.push(m.d[lo]); mx0 += hx[j]; my0 += hy[j];
+    }
+    mx0 /= boatN; my0 /= boatN;
+    for(let j=0;j<boatN;j++,i++){
+      const v = hv[j];
+      R.kind[i] = 1; R.p[i] = hx[j] - mx0; R.q[i] = hy[j] - my0; R.ink[i] = .04;
+      sc.a[i] = Math.min(1, .5 + .9*Math.pow(v,.7)); sc.s[i] = (.8 + v*1.1)*sizeK; sc.r[i] = 1 + rng()*.5; sc.z[i] = .55;
+      sc.c[i] = v > .45 ? 0 : v > .2 ? 1 : 2;
+    }
+  }
+  // rings spreading from the hull, like ink touching still water
+  for(let j=0;j<ripN;j++,i++){
+    R.kind[i] = 2; R.p[i] = (j%3); R.q[i] = rng()*6.2832; R.v[i] = rng()*2 - 1; R.a0[i] = .3 + rng()*.35; R.ink[i] = .45;
+    sc.a[i] = 0; sc.s[i] = .7 + rng()*.4; sc.r[i] = 1; sc.z[i] = .4; sc.c[i] = 1;
+  }
+  for(;i<N;i++){ R.kind[i] = 3; sc.x[i]=rng()*W; sc.y[i]=rng()*H; sc.a[i]=.04+rng()*.06; sc.s[i]=.7+rng()*.5; sc.r[i]=1; sc.z[i]=.05; sc.c[i]=2; }
+  updateRiver(sc, 0); R.snap.fill(0);
+  return sc;
+}
+// the river is alive: the current surges and curls, plumes billow and fade, the boat rides the swell, the rings spread.
+// a grain that wraps around (off the edge, or at the end of a plume's life) is flagged so the sand layer drops it in place
+function updateRiver(sc, T){
+  const R = sc.river, span = W*1.25, mg = W*.125, X = sc.x, Y = sc.y, A = sc.a, kd = R.kind;
+  const Tg = T + 1.6*Math.sin(T*.23);
+  buildFlowGrid(T*.9);
+  const bx = R.cx + Math.sin(T*.19)*W*.035;
+  const slope = (riverY(bx + 6, T) - riverY(bx - 6, T))/12;
+  const th = Math.atan(slope)*.7 + Math.sin(T*.8)*.012, ct = Math.cos(th), sn = Math.sin(th);
+  const by = R.cy + riverY(bx, T) + Math.sin(T*1.1)*H*.0035 - R.bh*.14;
+  const rcx = bx - R.bw*.02, rcy = R.cy + riverY(bx, T) + R.bh*.18;
+  for(let i=0;i<N;i++){
+    const t = kd[i];
+    if(t === 0){
+      const raw = R.p[i] + Tg*R.v[i], cyc = Math.floor(raw);
+      if(cyc !== R.cyc[i]){ R.cyc[i] = cyc; R.snap[i] = 1; }
+      let x = (raw - cyc)*span - mg;
+      let y = R.cy + R.q[i] + riverY(x + R.w[i]*140, T)*R.f[i];
+      const E = R.e[i];
+      flowS(x, y); const hx = x + FVX*E*1.4, hy = y + (FVY + .35)*E;
+      flowS(hx, hy); X[i] = hx + FVX*E*1.4; Y[i] = hy + (FVY + .35)*E;
+      A[i] = R.a0[i]*clamp01((x + mg)/mg)*clamp01((W + mg - x)/mg);
+    } else if(t === 4){
+      const L = R.f[i], lt = T/L + R.q[i], cyc = Math.floor(lt), ph = lt - cyc;
+      if(cyc !== R.cyc[i]){ R.cyc[i] = cyc; R.snap[i] = 1; R.p[i] = (R.p[i] + .618)%1; }
+      const x0 = ((R.p[i] + Tg*R.v[i])%1)*span - mg;
+      let x = x0, y = R.cy + riverY(x0, T) + R.w[i]*(H*.02 + ph*H*.13*R.e[i]);
+      const E = H*(.01 + .06*ph)*R.e[i];
+      flowS(x, y); const hx = x + FVX*E, hy = y + (FVY + .35)*E;
+      flowS(hx, hy); X[i] = hx + FVX*E; Y[i] = hy + (FVY + .35)*E;
+      A[i] = R.a0[i]*Math.pow(Math.sin(Math.PI*ph), 1.3)*clamp01((x0 + mg)/mg)*clamp01((W + mg - x0)/mg);
+    } else if(t === 1){
+      const dx = R.p[i], dy = R.q[i];
+      X[i] = bx + dx*ct - dy*sn; Y[i] = by + dx*sn + dy*ct;
+    } else if(t === 2){
+      const lt = T*.17 + R.p[i]/3, cyc = Math.floor(lt), ph = lt - cyc;
+      if(cyc !== R.cyc[i]){ R.cyc[i] = cyc; R.snap[i] = 1; }
+      const rx = 26 + ph*R.bw*.6 + R.v[i]*5, ry = rx*.15;
+      X[i] = rcx + Math.cos(R.q[i])*rx; Y[i] = rcy + Math.sin(R.q[i])*ry;
+      A[i] = R.a0[i]*Math.sin(Math.PI*ph)*(1 - ph*.6);
+    }
+  }
 }
 
 // ---------- Text ----------
@@ -580,6 +716,9 @@ function build(){
       const sc = buildArt(s, k);
       sets.en[k]=sc; sets.zh[k]=sc;
       washes[k] = density[s.map] ? {m:density[s.map], pl:s.pl} : null;
+    } else if(s.type==="river"){
+      const rv = buildRiver(s, k);
+      sets.en[k] = rv; sets.zh[k] = rv; washes[k] = null;
     } else if(s.type==="comp"){
       const mk = s.key==="quote" ? quoteItems : linkItems;
       sets.en[k] = buildComp(mk("en"), s.seed, "en");
@@ -635,7 +774,7 @@ function setLang(l){
   try{ localStorage.setItem("silk-lang", l); }catch(e){}
   document.getElementById("btn-en").setAttribute("aria-pressed", l==="en");
   document.getElementById("btn-zh").setAttribute("aria-pressed", l==="zh");
-  hintEl.textContent = COPY[l].hint; hintEl.dataset.l = l;
+  hintEl.textContent = hintText(l); hintEl.dataset.l = l;
   stirCorner([1,2], 3.2);
   const c = COPY[l];
   srEl.lang = l==="zh" ? "zh-Hant" : "en";
@@ -883,9 +1022,9 @@ function wrapWords(g, text, maxW){
 }
 function labelSpec(id, text, opt){
   const zh = lang === "zh";
-  if(id === "hint"){ const mid = W < 700; return {w:140, h:28, x0: mid ? W/2 - 70 : 22, y0:H - 22 - 28, color:"#45443F", draw:o=>{
-    o.font = zh ? '500 13px "Noto Serif TC",serif' : 'italic 500 15px "Cormorant Garamond",serif';
-    o.letterSpacing = zh ? "4px" : "2px"; o.textAlign = mid ? "center" : "left"; o.textBaseline = "middle"; o.fillText(text, mid ? 70 : 0, 14);
+  if(id === "hint"){ return {w:170, h:28, x0: W/2 - 85, y0:H - 66 - 28, color:"#262624", draw:o=>{
+    o.font = zh ? '500 15px "Noto Serif TC",serif' : 'italic 500 19px "Cormorant Garamond",serif';
+    o.letterSpacing = zh ? "6px" : "3px"; o.textAlign = "center"; o.textBaseline = "middle"; o.fillText(text, 85, 14);
   }}; }
   const onLeft = opt && opt.side === "left";
   if(id === "dist") return {w:20, h:46, x0: onLeft ? 22 : W - 22 - 18, y0:H - 22 - 46, color:"#45443F", draw:o=>{
@@ -1099,6 +1238,7 @@ function frame(now){
   const hasPtr = mx > -1e4;
   const tmx = hasPtr ? mx/W - .5 : 0, tmy = hasPtr ? my/H - .5 : 0;
   mxs += (tmx - mxs)*Math.min(1, dt*2.5); mys += (tmy - mys)*Math.min(1, dt*2.5);
+  if(k === 0 || k === S-2) updateRiver(sets.en[0], reduce ? 0 : FT);
   const cA = cam(SCENES[k], sp - k), cB = cam(SCENES[k+1], sp - (k+1));
 
   // the opening gathers on its own, and scrolling draws the grain together sooner
@@ -1177,9 +1317,13 @@ function frame(now){
   stepVortices(dt);
   const nV = VOR.length;
   const nSub = dt > .025 ? 2 : 1, hSub = dt/nSub;
+  // how much of the river is on screen: it fades out as the first painting gathers, and back in at the loop
+  const RV0 = sets.en[0] && sets.en[0].river, RW = !RV0 ? 0 : k === 0 ? 1 - t : k === S-2 ? t : 0;
+  const RINK = RV0 ? RV0.ink : null, RS = RW > 0 && RV0 ? RV0.snap : null;
   const R = W<700 ? 70 : 110, R2 = R*R;
   for(let i=0;i<N;i++){
     let x = P.x[i], y = P.y[i], a = P.a[i], m = P.m[i];
+    if(RW > 0){ const rm = RINK[i]*RW; if(rm > m) m = rm; }
     if(introT < 1){
       const il = clamp01((introT - DR[i]*.5)/.5), e = ease(il), sn = Math.sin(Math.PI*il), lift = sn*L*.55*MG[i];
       const bx = SX[i] + (x-SX[i])*e, by = SY[i] + (y-SY[i])*e;
@@ -1199,7 +1343,7 @@ function frame(now){
       y += Math.cos(T*.29 + PH[i]*1.7)*amp*.7 + FVY*amp*.35;
       // sand: every grain has its own weight and chases where it should be on its own spring,
       // so light grains stream ahead, heavy ones lag, they sway past and settle; fast grains spray and leave ink
-      if(snapG){ GX[i] = x; GY[i] = y; GVX[i] = 0; GVY[i] = 0; }
+      if(snapG || (RS && RS[i])){ GX[i] = x; GY[i] = y; GVX[i] = 0; GVY[i] = 0; PXp[i] = x; PYp[i] = y; }
       const kf = KF[i], kc = KC[i];
       let gvx = GVX[i], gvy = GVY[i], gx = GX[i], gy = GY[i];
       for(let j=0;j<nSub;j++){
@@ -1219,7 +1363,7 @@ function frame(now){
     if(hasPtr){
       const dx = x + OX[i] - mx, dy = y + OY[i] - my, d2 = dx*dx + dy*dy;
       if(d2 < R2 && d2 > .01){
-        const d = Math.sqrt(d2), f2 = (1 - d/R), fs = f2*f2*(reduce?.6:1.5);
+        const d = Math.sqrt(d2), f2 = (1 - d/R), fs = f2*f2*(reduce?.6:1.5)*(1 - RW*.7);
         vx += (dx/d)*fs + (-dy/d)*fs*.9 + .2*f2;
         vy += (dy/d)*fs + (dx/d)*fs*.9 - .4*f2;
       }
@@ -1239,6 +1383,8 @@ function frame(now){
     if(disp > .5){ x += OX[i]; y += OY[i]; m = Math.max(m, Math.min(1, disp/45)); }
     FX[i]=x; FY[i]=y; FA[i]=a>1?1:a; FM[i]=m;
   }
+
+  if(RV0) RV0.snap.fill(0);
 
   // ink in water: moving grain is laid into a half-resolution buffer that slowly clears, leaving soft plumes
   if(!reduce){
@@ -1338,12 +1484,28 @@ function frame(now){
     ensureLabel("credit", sc.credit[lang] + (lang==="zh" ? "　" : ". ") + MUSEUM[lang], opt);
     ensureLabel("dist", sc.label, opt);
   }
-  ensureLabel("hint", COPY[lang].hint);
+  ensureLabel("hint", hintText(lang));
   const hintA = Math.max(0, 1 - sp*5) * iE;
-  UI.hint.ta = hintA * .9;
+  UI.hint.ta = hintA * (.82 + .13*Math.sin(T*2.1));
   if(UI.credit) UI.credit.ta = pO*.92*(1 - hintA);
   if(UI.dist) UI.dist.ta = pO*.85*(1 - hintA);
   drawUI(T, dt);
+  drawCue(T, hintA);
+}
+// above the word: a hairline of grain with a bead of ink that slips down it, again and again
+function drawCue(T, a){
+  if(a < .01) return;
+  const x = W/2, y1 = H - 66 - 28 - 6, y0 = y1 - 46, ph = reduce ? .5 : (T*.55)%1;
+  uctx.fillStyle = "#262624";
+  for(let j=0;j<46;j++){
+    const t = j/45, d = (t - ph)/.1, bead = Math.exp(-d*d), y = y0 + t*(y1 - y0);
+    for(let q=0;q<3;q++){
+      const jx = Math.sin(j*12.9 + q*78.2)*(.9 + bead*1.6);
+      uctx.globalAlpha = a*(.1 + bead*.75)*(q===0 ? 1 : .55);
+      uctx.fillRect(x + jx, y + Math.sin(j*3.1 + q)*.3, .9, .9 + bead*.8);
+    }
+  }
+  uctx.globalAlpha = 1;
 }
 
 function makeGrain(){
