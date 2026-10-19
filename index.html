@@ -202,7 +202,7 @@ const creditEl = document.getElementById("credit");
 const srEl = document.getElementById("sr");
 
 let W, H, DPR, N, segH, L;
-let SX, SY, PH, LX, LY, DR, MG, OX, OY, VX, VY, FX, FY, FA, FM, PXp, PYp;
+let SX, SY, PH, LX, LY, DR, MG, OX, OY, VX, VY, FX, FY, FA, FM, PXp, PYp, GX, GY, GVX, GVY, KF, KC;
 let P, Q;
 let sets = {en: [], zh: []};
 let washes = [];
@@ -551,11 +551,16 @@ function build(){
     OX=new Float32Array(N);OY=new Float32Array(N);VX=new Float32Array(N);VY=new Float32Array(N);
     FX=new Float32Array(N);FY=new Float32Array(N);FA=new Float32Array(N);FM=new Float32Array(N);
     PXp=new Float32Array(N);PYp=new Float32Array(N);
+    GX=new Float32Array(N);GY=new Float32Array(N);GVX=new Float32Array(N);GVY=new Float32Array(N);
+    KF=new Float32Array(N);KC=new Float32Array(N);
     P=newBuf(); Q=newBuf();
     for(let i=0;i<N;i++){
       PH[i]=r()*6.283; DR[i]=r(); MG[i]=.35+r()*.65;
       const ang = -Math.PI/2 + (r()-.3)*Math.PI*.95;
       LX[i]=Math.cos(ang); LY[i]=Math.sin(ang);
+      // weight: most grains are fine and quick, a few are heavy and drag behind
+      const wgt = Math.pow(r(), 1.6);
+      KF[i] = 70 - wgt*56; KC[i] = 2*Math.sqrt(KF[i])*(.55 + r()*.2);
     }
   }
   for(let i=0;i<N;i++){ SX[i]=Math.random()*W; SY[i]=Math.random()*H; }
@@ -592,7 +597,7 @@ function build(){
       washes[k] = null;
     }
   });
-  ictx.clearRect(0,0,ink.width,ink.height); trailSkip = true;
+  ictx.clearRect(0,0,ink.width,ink.height); trailSkip = true; snapG = true;
   buildCorner();
   sizeUI();
   built = true;
@@ -603,7 +608,7 @@ let lang = "en";
 try { const v = localStorage.getItem("silk-lang"); if(v==="zh"||v==="en") lang = v; } catch(e){}
 let langMix = lang==="zh" ? 1 : 0;
 let sp = 0, spV = 0, start = 0, introP = 0, plateScene = -1;
-let dif = null, dctx = null;
+let dif = null, dctx = null, snapG = true;
 let PUSH = 0, velS = 0, pushS = 0, lastSp = 0, STIR = 0, FT = 0, trailSkip = true;
 let landed = -1, bleedK = -1, bleedT = 9;
 const ENDC = {
@@ -1069,7 +1074,7 @@ function frame(now){
   // the scroll closes on the painting it opened with, then quietly rolls back to the start
   if(sp > S-1.004 && scrollY >= (S-1)*segH - 2 && !touching){
     scrollTo(0, 0); lastScrollY = 0; lastY = 0; scrollVel = 0;
-    sp = 0; spV = 0; lastSp = 0; velS = 0; pushS = 0; PUSH = 0; trailSkip = true;
+    sp = 0; spV = 0; lastSp = 0; velS = 0; pushS = 0; PUSH = 0; trailSkip = true; snapG = true;
   }
   let k = Math.floor(sp), f = sp - k;
   if(k >= S-1){ k = S-2; f = 1; }
@@ -1167,6 +1172,7 @@ function frame(now){
 
   stepVortices(dt);
   const nV = VOR.length;
+  const nSub = dt > .025 ? 2 : 1, hSub = dt/nSub;
   const R = W<700 ? 70 : 110, R2 = R*R;
   for(let i=0;i<N;i++){
     let x = P.x[i], y = P.y[i], a = P.a[i], m = P.m[i];
@@ -1187,6 +1193,23 @@ function frame(now){
       flow(x,y,FT);
       x += Math.sin(T*.4 + PH[i])*amp + FVX*amp*.7;
       y += Math.cos(T*.29 + PH[i]*1.7)*amp*.7 + FVY*amp*.35;
+      // sand: every grain has its own weight and chases where it should be on its own spring,
+      // so light grains stream ahead, heavy ones lag, they sway past and settle; fast grains spray and leave ink
+      if(snapG){ GX[i] = x; GY[i] = y; GVX[i] = 0; GVY[i] = 0; }
+      const kf = KF[i], kc = KC[i];
+      let gvx = GVX[i], gvy = GVY[i], gx = GX[i], gy = GY[i];
+      for(let j=0;j<nSub;j++){
+        gvx += ((x - gx)*kf - gvx*kc)*hSub; gvy += ((y - gy)*kf - gvy*kc)*hSub;
+        gx += gvx*hSub; gy += gvy*hSub;
+      }
+      GVX[i] = gvx; GVY[i] = gvy; GX[i] = gx; GY[i] = gy;
+      const spd = Math.abs(gvx) + Math.abs(gvy);
+      x = gx; y = gy;
+      if(spd > 30){
+        const sp2 = Math.min(1, (spd - 30)/500);
+        x += Math.sin(PH[i]*31 + T*9)*sp2*3.2; y += Math.cos(PH[i]*23 + T*8)*sp2*3.2;
+        m = Math.max(m, sp2*.85);
+      }
     }
     let vx = VX[i], vy = VY[i];
     if(hasPtr){
@@ -1254,7 +1277,7 @@ function frame(now){
     const TA = [.05, .085, .12], TW = [.55, .8, 1.05];
     for(let b=0;b<3;b++){ ictx.globalAlpha = TA[b]; ictx.lineWidth = TW[b]; ictx.stroke(th[b]); }
   }
-  PXp.set(FX); PYp.set(FY); trailSkip = false;
+  PXp.set(FX); PYp.set(FY); trailSkip = false; snapG = false;
   ctx.globalAlpha = .8;
   ctx.drawImage(ink, 0, 0, W, H);
 
