@@ -601,7 +601,7 @@ function build(){
 let lang = "en";
 try { const v = localStorage.getItem("silk-lang"); if(v==="zh"||v==="en") lang = v; } catch(e){}
 let langMix = lang==="zh" ? 1 : 0;
-let sp = 0, start = 0, plateScene = -1;
+let sp = 0, spV = 0, start = 0, introP = 0, plateScene = -1;
 let PUSH = 0, velS = 0, pushS = 0, lastSp = 0;
 const ENDC = {
   en:{q:["Some mountains can be walked through,","some can be gazed at,","some can be wandered in,","and some can be dwelt in."], src:"Guo Xi, Linquan Gaozhi, c. 1075", lines:"Raised in New Jersey. Shaped in Taipei. Collating in Washington.", zh:false},
@@ -947,19 +947,28 @@ function frame(now){
   const T = now/1000;
 
   const target = Math.min(S-1, scrollY/segH);
-  // the grain follows a touch slower on a gentle scroll and quickens a little when you scroll harder
+  // the grain rides a soft spring behind the scroll: it gathers speed, glides, and settles like ink in water.
+  // a gentle scroll drifts; a long scroll stretches the spring and the grain flows faster to catch up
   const sv = Math.abs(scrollY - lastY)/segH/Math.max(dt, 1e-3); lastY = scrollY;
-  scrollVel += (sv - scrollVel)*Math.min(1, dt*4);
-  const follow = 3 + Math.min(2, scrollVel*1.5);
-  sp = reduce ? target : sp + (target - sp)*Math.min(1, dt*follow);
+  scrollVel += (sv - scrollVel)*Math.min(1, dt*3);
+  if(reduce){ sp = target; spV = 0; }
+  else {
+    const w = 3.4, zeta = .92, sub = 4, h = dt/sub;
+    for(let j=0;j<sub;j++){
+      spV += ((target - sp)*w*w - 2*zeta*w*spV)*h;
+      sp += spV*h;
+    }
+    if(sp < 0){ sp = 0; spV = Math.max(0, spV); }
+    if(sp > S-1){ sp = S-1; spV = Math.min(0, spV); }
+  }
   // the scroll closes on the painting it opened with, then quietly rolls back to the start
   if(sp > S-1.004 && scrollY >= (S-1)*segH - 2 && !touching){
     scrollTo(0, 0); lastScrollY = 0; lastY = 0; scrollVel = 0;
-    sp = 0; lastSp = 0; velS = 0; pushS = 0; PUSH = 0;
+    sp = 0; spV = 0; lastSp = 0; velS = 0; pushS = 0; PUSH = 0;
   }
   let k = Math.floor(sp), f = sp - k;
   if(k >= S-1){ k = S-2; f = 1; }
-  const t = smooth(.12, .88, f);
+  const t = smooth(.05, .95, f);
 
   // scroll speed walks us into the painting: fast moves push grain out from the horizon, still scrolls settle
   const dtv = Math.max(dt, 1e-3);
@@ -974,7 +983,9 @@ function frame(now){
   mxs += (tmx - mxs)*Math.min(1, dt*2.5); mys += (tmy - mys)*Math.min(1, dt*2.5);
   const cA = cam(SCENES[k], sp - k), cB = cam(SCENES[k+1], sp - (k+1));
 
-  const introT = clamp01((now - start)/(reduce?600:4200));
+  // the opening gathers on its own, and scrolling draws the grain together sooner
+  introP = Math.min(1, introP + dt/(reduce ? .6 : 5.2) + (reduce ? 0 : Math.min(2.5, scrollVel)*dt*.9));
+  const introT = introP;
   const lt = lang==="zh" ? 1 : 0;
   if(langMix !== lt){
     const step = dt/(reduce?.3:1.8);
