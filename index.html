@@ -947,10 +947,10 @@ function frame(now){
   const T = now/1000;
 
   const target = Math.min(S-1, scrollY/segH);
-  // the grain follows slowly on a gentle scroll and speeds up the harder you scroll
+  // the grain follows a touch slower on a gentle scroll and quickens a little when you scroll harder
   const sv = Math.abs(scrollY - lastY)/segH/Math.max(dt, 1e-3); lastY = scrollY;
-  scrollVel += (sv - scrollVel)*Math.min(1, dt*(sv > scrollVel ? 8 : 1.5));
-  const follow = 0.9 + Math.min(5.5, scrollVel*2.4);
+  scrollVel += (sv - scrollVel)*Math.min(1, dt*4);
+  const follow = 3 + Math.min(2, scrollVel*1.5);
   sp = reduce ? target : sp + (target - sp)*Math.min(1, dt*follow);
   // the scroll closes on the painting it opened with, then quietly rolls back to the start
   if(sp > S-1.004 && scrollY >= (S-1)*segH - 2 && !touching){
