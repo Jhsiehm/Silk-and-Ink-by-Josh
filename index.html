@@ -202,7 +202,7 @@ const creditEl = document.getElementById("credit");
 const srEl = document.getElementById("sr");
 
 let W, H, DPR, N, segH, L;
-let SX, SY, PH, LX, LY, DR, MG, OX, OY, VX, VY, FX, FY, FA, FM;
+let SX, SY, PH, LX, LY, DR, MG, OX, OY, VX, VY, FX, FY, FA, FM, PXp, PYp;
 let P, Q;
 let sets = {en: [], zh: []};
 let washes = [];
@@ -550,6 +550,7 @@ function build(){
     LX=new Float32Array(N);LY=new Float32Array(N);DR=new Float32Array(N);MG=new Float32Array(N);
     OX=new Float32Array(N);OY=new Float32Array(N);VX=new Float32Array(N);VY=new Float32Array(N);
     FX=new Float32Array(N);FY=new Float32Array(N);FA=new Float32Array(N);FM=new Float32Array(N);
+    PXp=new Float32Array(N);PYp=new Float32Array(N);
     P=newBuf(); Q=newBuf();
     for(let i=0;i<N;i++){
       PH[i]=r()*6.283; DR[i]=r(); MG[i]=.35+r()*.65;
@@ -591,7 +592,7 @@ function build(){
       washes[k] = null;
     }
   });
-  ictx.clearRect(0,0,ink.width,ink.height);
+  ictx.clearRect(0,0,ink.width,ink.height); trailSkip = true;
   buildCorner();
   sizeUI();
   built = true;
@@ -602,7 +603,7 @@ let lang = "en";
 try { const v = localStorage.getItem("silk-lang"); if(v==="zh"||v==="en") lang = v; } catch(e){}
 let langMix = lang==="zh" ? 1 : 0;
 let sp = 0, spV = 0, start = 0, introP = 0, plateScene = -1;
-let PUSH = 0, velS = 0, pushS = 0, lastSp = 0;
+let PUSH = 0, velS = 0, pushS = 0, lastSp = 0, STIR = 0, FT = 0, trailSkip = true;
 const ENDC = {
   en:{q:["Some mountains can be walked through,","some can be gazed at,","some can be wandered in,","and some can be dwelt in."], src:"Guo Xi, Linquan Gaozhi, c. 1075", lines:"Raised in New Jersey. Shaped in Taipei. Collating in Washington.", zh:false},
   zh:{q:["山水有可行者，","有可望者，","有可遊者，","有可居者。"], src:"郭熙《林泉高致》", lines:"在新澤西長大，在台北成形，在華盛頓校勘。", zh:true}
@@ -904,9 +905,20 @@ paperTone(); setInterval(paperTone, 5*60*1000);
 document.addEventListener("pointerout", e=>{ if(!e.relatedTarget){ mx=my=-1e5; } });
 let rt; addEventListener("resize", ()=>{ clearTimeout(rt); rt=setTimeout(build, 220); });
 
-// a slow curling current, like ink let go in still water
-function flowX(x,y,T){ const a = 2.3*(Math.sin(x*.0041 + y*.0013 + T*.22) + Math.cos(y*.0049 - x*.0018 - T*.17)); return Math.cos(a); }
-function flowY(x,y,T){ const a = 2.3*(Math.sin(x*.0041 + y*.0013 + T*.22) + Math.cos(y*.0049 - x*.0018 - T*.17)); return Math.sin(a) - .45; }
+// a slow curling current, like ink let go in still water: the curl of two drifting layers of eddies,
+// so grain never bunches or scatters but travels in long ribbons, the way silk folds and ink unspools
+let FVX = 0, FVY = 0;
+function flow(x,y,T){
+  const p1 = x*.0043 + T*.21, p2 = y*.0051 - T*.16 + 1.3;
+  const s1 = Math.sin(p1), c1 = Math.cos(p1), s2 = Math.sin(p2), c2 = Math.cos(p2);
+  let vx = s1*c2*1.08, vy = -c1*s2*.92;
+  const rx = x*.8 + y*.6, ry = y*.8 - x*.6;
+  const p3 = rx*.0117 - T*.33 + 2.1, p4 = ry*.0103 + T*.27 + .7;
+  const s3 = Math.sin(p3), c3 = Math.cos(p3), s4 = Math.sin(p4), c4 = Math.cos(p4);
+  const drx = .5*c3*s4*1.06, dry = .5*s3*c4*.94;
+  vx += drx*.6 + dry*.8; vy -= drx*.8 - dry*.6;
+  FVX = vx*1.35; FVY = vy*1.35 - .35;
+}
 
 function computeInto(set, k, t, out, cA, cB, T){
   const A = set[k], B = set[k+1];
@@ -920,9 +932,10 @@ function computeInto(set, k, t, out, cA, cB, T){
     const lt = B.d ? clamp01((t - d*.62)/.38) : clamp01((t - d*.4)/.6), e = ease(lt), sn = Math.sin(Math.PI*lt);
     let x = ax + (bx-ax)*e, y = ay + (by-ay)*e;
     if(sn > .001){
-      const lift = sn*L*MG[i];
-      x += (flowX(x,y,T)*.65 + LX[i]*.35)*lift;
-      y += (flowY(x,y,T)*.65 + LY[i]*.35)*lift;
+      const lift = sn*L*MG[i]*(1 + STIR*.45);
+      flow(x,y,T);
+      x += (FVX*.75 + LX[i]*.25)*lift;
+      y += (FVY*.75 + LY[i]*.25)*lift;
     }
     const zz = za + (zb-za)*e;
     const pk = PUSH*zz;
@@ -964,7 +977,7 @@ function frame(now){
   // the scroll closes on the painting it opened with, then quietly rolls back to the start
   if(sp > S-1.004 && scrollY >= (S-1)*segH - 2 && !touching){
     scrollTo(0, 0); lastScrollY = 0; lastY = 0; scrollVel = 0;
-    sp = 0; spV = 0; lastSp = 0; velS = 0; pushS = 0; PUSH = 0;
+    sp = 0; spV = 0; lastSp = 0; velS = 0; pushS = 0; PUSH = 0; trailSkip = true;
   }
   let k = Math.floor(sp), f = sp - k;
   if(k >= S-1){ k = S-2; f = 1; }
@@ -977,6 +990,9 @@ function frame(now){
   const pushT = reduce ? 0 : Math.min(.3, Math.abs(velS)*.22);
   pushS += (pushT - pushS)*Math.min(1, dt*3.5);
   PUSH = pushS;
+  // moving through the scroll stirs the water; when you stop it slowly goes still again
+  STIR += ((reduce ? 0 : Math.min(1.4, Math.abs(velS)*.8)) - STIR)*Math.min(1, dt*(Math.abs(velS)*.8 > STIR ? 3 : .9));
+  FT += dt*(1 + STIR*1.6);
 
   const hasPtr = mx > -1e4;
   const tmx = hasPtr ? mx/W - .5 : 0, tmy = hasPtr ? my/H - .5 : 0;
@@ -992,17 +1008,18 @@ function frame(now){
     langMix = lt > langMix ? Math.min(lt, langMix+step) : Math.max(lt, langMix-step);
   }
   if(langMix <= 0 || langMix >= 1){
-    computeInto(sets[langMix>=1?"zh":"en"], k, t, P, cA, cB, T);
+    computeInto(sets[langMix>=1?"zh":"en"], k, t, P, cA, cB, FT);
   } else {
-    computeInto(sets.en, k, t, P, cA, cB, T);
-    computeInto(sets.zh, k, t, Q, cA, cB, T);
+    computeInto(sets.en, k, t, P, cA, cB, FT);
+    computeInto(sets.zh, k, t, Q, cA, cB, FT);
     for(let i=0;i<N;i++){
       const dx = Q.x[i]-P.x[i], dy = Q.y[i]-P.y[i];
       const ll = clamp01((langMix - DR[i]*.4)/.6), e = ease(ll);
       const sn = Math.sin(Math.PI*ll)*clamp01(Math.hypot(dx,dy)/40), lift = sn*L*.7*MG[i];
       const x = P.x[i] + dx*e, y = P.y[i] + dy*e;
-      P.x[i] = x + (flowX(x,y,T)*.65 + LX[i]*.35)*lift;
-      P.y[i] = y + (flowY(x,y,T)*.65 + LY[i]*.35)*lift;
+      flow(x,y,FT);
+      P.x[i] = x + (FVX*.7 + LX[i]*.3)*lift;
+      P.y[i] = y + (FVY*.7 + LY[i]*.3)*lift;
       P.a[i] += (Q.a[i]-P.a[i])*e; P.s[i] += (Q.s[i]-P.s[i])*e; P.r[i] += (Q.r[i]-P.r[i])*e;
       if(e>.5) P.c[i] = Q.c[i];
       if(sn > P.m[i]) P.m[i] = sn;
@@ -1035,16 +1052,18 @@ function frame(now){
     if(introT < 1){
       const il = clamp01((introT - DR[i]*.5)/.5), e = ease(il), sn = Math.sin(Math.PI*il), lift = sn*L*.55*MG[i];
       const bx = SX[i] + (x-SX[i])*e, by = SY[i] + (y-SY[i])*e;
-      x = bx + (flowX(bx,by,T)*.7 + LX[i]*.3)*lift;
-      y = by + (flowY(bx,by,T)*.7 + LY[i]*.3)*lift;
+      flow(bx,by,FT);
+      x = bx + (FVX*.8 + LX[i]*.2)*lift;
+      y = by + (FVY*.8 + LY[i]*.2)*lift;
       a = .06 + (a-.06)*e;
       if(sn > m) m = sn;
       if(il < .02) m = 1;
     }
     if(!reduce){
-      const amp = .3 + (1 - Math.min(1, a*2.5))*3.4;
-      x += Math.sin(T*.4 + PH[i])*amp + flowX(x,y,T)*amp*.6;
-      y += Math.cos(T*.29 + PH[i]*1.7)*amp*.7;
+      const amp = (.3 + (1 - Math.min(1, a*2.5))*3.4)*(1 + STIR*1.1);
+      flow(x,y,FT);
+      x += Math.sin(T*.4 + PH[i])*amp + FVX*amp*.7;
+      y += Math.cos(T*.29 + PH[i]*1.7)*amp*.7 + FVY*amp*.35;
     }
     let vx = VX[i], vy = VY[i];
     if(hasPtr){
@@ -1064,7 +1083,7 @@ function frame(now){
 
   // ink in water: moving grain is laid into a half-resolution buffer that slowly clears, leaving soft plumes
   ictx.globalCompositeOperation = "destination-out";
-  ictx.globalAlpha = 1; ictx.fillStyle = "rgba(0,0,0,.085)";
+  ictx.globalAlpha = 1; ictx.fillStyle = "rgba(0,0,0,.06)";
   ictx.fillRect(0,0,ink.width,ink.height);
   ictx.globalCompositeOperation = "source-over";
   ictx.fillStyle = "#34332F";
@@ -1075,6 +1094,23 @@ function frame(now){
     ictx.globalAlpha = a*.7;
     ictx.fillRect(FX[i]*.5 - s*.5, FY[i]*.5 - s*.5, s, s);
   }
+  if(!reduce && !trailSkip){
+    const th = [new Path2D(), new Path2D(), new Path2D()];
+    for(let i=0;i<N;i++){
+      const m = FM[i]; if(m < .08 || FA[i] < .05) continue;
+      const x0 = PXp[i]*.5, y0 = PYp[i]*.5, x1 = FX[i]*.5, y1 = FY[i]*.5;
+      const dx = x1-x0, dy = y1-y0, d2 = dx*dx + dy*dy;
+      if(d2 < .09 || d2 > 900) continue;
+      // dry brush: charcoal skips over the tooth of the paper, so each thread breaks and catches
+      if(Math.sin(PH[i]*7.3 + (x1 + y1)*.21 + FT*2.2) > .45) continue;
+      const b = m < .35 ? 0 : m < .7 ? 1 : 2;
+      th[b].moveTo(x0, y0); th[b].lineTo(x1, y1);
+    }
+    ictx.strokeStyle = "#2A2926"; ictx.lineCap = "butt";
+    const TA = [.05, .085, .12], TW = [.55, .8, 1.05];
+    for(let b=0;b<3;b++){ ictx.globalAlpha = TA[b]; ictx.lineWidth = TW[b]; ictx.stroke(th[b]); }
+  }
+  PXp.set(FX); PYp.set(FY); trailSkip = false;
   ctx.globalAlpha = .8;
   ctx.drawImage(ink, 0, 0, W, H);
 
