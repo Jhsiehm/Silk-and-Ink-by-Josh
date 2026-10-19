@@ -1012,13 +1012,18 @@ function computeInto(set, k, t, out, cA, cB, T){
     const bx = cB.ax + (B.x[i]-cB.ax)*(1+cB.ds*zb) + cB.dx*zb;
     const by = cB.ay + (B.y[i]-cB.ay)*(1+cB.ds*zb) + cB.dy*zb;
     const d = B.d ? B.d[i] : DR[i]*.55 + clamp01(B.x[i]/W)*.45;
-    const lt = B.d ? clamp01((t - d*.62)/.38) : clamp01((t - d*.4)/.6), e = ease(lt), sn = Math.sin(Math.PI*lt);
-    let x = ax + (bx-ax)*e, y = ay + (by-ay)*e;
+    const lt = B.d ? clamp01((t - d*.62)/.38) : clamp01((t - d*.5)/.5), e = ease(lt), sn = Math.sin(Math.PI*lt);
+    // like the opening: each grain lets go of one painting, hangs loose in the water, then gathers into the next.
+    // its path bows out toward a point of mist scattered across the paper, rather than travelling straight across
+    const mxp = (ax + bx)*.5, myp = (ay + by)*.5;
+    const cx = mxp + (SX[i] - mxp)*.32, cy = myp + (SY[i] - myp)*.32;
+    const u = 1 - e;
+    let x = u*u*ax + 2*u*e*cx + e*e*bx, y = u*u*ay + 2*u*e*cy + e*e*by;
     if(sn > .001){
-      const lift = sn*L*MG[i]*(1 + STIR*.45);
+      const lift = sn*L*.7*MG[i]*(1 + STIR*.45);
       flow(x,y,T);
-      x += (FVX*.75 + LX[i]*.25)*lift;
-      y += (FVY*.75 + LY[i]*.25)*lift;
+      x += (FVX*.82 + LX[i]*.18)*lift;
+      y += (FVY*.82 + LY[i]*.18)*lift;
     }
     const zz = za + (zb-za)*e;
     const pk = PUSH*zz;
@@ -1026,7 +1031,7 @@ function computeInto(set, k, t, out, cA, cB, T){
     out.x[i] = vpx + (x-vpx)*(1+pk);
     out.y[i] = vpy + (y-vpy)*(1+pk);
     out.z[i] = zz;
-    out.a[i] = (A.a[i] + (B.a[i]-A.a[i])*e) * (1 - .25*sn) * (1 - PUSH*.9*(1-(za + (zb-za)*e)));
+    out.a[i] = (A.a[i] + (B.a[i]-A.a[i])*e) * (1 - .42*sn) * (1 - PUSH*.9*(1-(za + (zb-za)*e)));
     out.s[i] = A.s[i] + (B.s[i]-A.s[i])*e;
     out.r[i] = A.r[i] + (B.r[i]-A.r[i])*e;
     out.c[i] = e < .5 ? A.c[i] : B.c[i];
@@ -1219,9 +1224,13 @@ function frame(now){
     const th = [new Path2D(), new Path2D(), new Path2D()];
     for(let i=0;i<N;i++){
       const m = FM[i]; if(m < .08 || FA[i] < .05) continue;
-      const x0 = PXp[i]*.5, y0 = PYp[i]*.5, x1 = FX[i]*.5, y1 = FY[i]*.5;
-      const dx = x1-x0, dy = y1-y0, d2 = dx*dx + dy*dy;
+      const x1 = FX[i]*.5, y1 = FY[i]*.5;
+      let dx = x1 - PXp[i]*.5, dy = y1 - PYp[i]*.5;
+      const d2 = dx*dx + dy*dy;
       if(d2 < .09 || d2 > 900) continue;
+      // a thread is only ever a short, soft stroke behind the grain, however far it moved this frame
+      if(d2 > 16){ const k2 = 4/Math.sqrt(d2); dx *= k2; dy *= k2; }
+      const x0 = x1 - dx, y0 = y1 - dy;
       // dry brush: charcoal skips over the tooth of the paper, so each thread breaks and catches
       if(Math.sin(PH[i]*7.3 + (x1 + y1)*.21 + FT*2.2) > .45) continue;
       const b = m < .35 ? 0 : m < .7 ? 1 : 2;
