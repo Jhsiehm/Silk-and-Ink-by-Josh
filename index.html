@@ -604,6 +604,7 @@ try { const v = localStorage.getItem("silk-lang"); if(v==="zh"||v==="en") lang =
 let langMix = lang==="zh" ? 1 : 0;
 let sp = 0, spV = 0, start = 0, introP = 0, plateScene = -1;
 let PUSH = 0, velS = 0, pushS = 0, lastSp = 0, STIR = 0, FT = 0, trailSkip = true;
+let landed = -1, bleedK = -1, bleedT = 9;
 const ENDC = {
   en:{q:["Some mountains can be walked through,","some can be gazed at,","some can be wandered in,","and some can be dwelt in."], src:"Guo Xi, Linquan Gaozhi, c. 1075", lines:"Raised in New Jersey. Shaped in Taipei. Collating in Washington.", zh:false},
   zh:{q:["山水有可行者，","有可望者，","有可遊者，","有可居者。"], src:"郭熙《林泉高致》", lines:"在新澤西長大，在台北成形，在華盛頓校勘。", zh:true}
@@ -639,7 +640,41 @@ function setLang(l){
 }
 document.querySelectorAll("#lang button[data-l]").forEach(b=>b.addEventListener("click",()=>setLang(b.dataset.l)));
 
-addEventListener("pointermove", e=>{ mx=e.clientX; my=e.clientY; }, {passive:true});
+addEventListener("pointermove", e=>{ mx=e.clientX; my=e.clientY; if(e.pointerType !== "touch") stirAt(mx, my, e.timeStamp, 1); }, {passive:true});
+addEventListener("touchmove", e=>{ const t = e.touches[0]; if(t) stirAt(t.clientX, t.clientY, e.timeStamp, .6); }, {passive:true});
+addEventListener("touchstart", e=>{ const t = e.touches[0]; if(t){ sLX = t.clientX; sLY = t.clientY; sLT = e.timeStamp; } }, {passive:true});
+
+// a brush drawn through still water leaves two eddies turning against each other in its wake;
+// they drift on with the brush's momentum, ride the current, spread and slowly fade
+const VOR = [];
+let sLX = null, sLY = 0, sLT = 0, sLast = 0, BRUSH = 0;
+function stirAt(x, y, t, k){
+  if(reduce) return;
+  if(sLX === null || t - sLT > 160){ sLX = x; sLY = y; sLT = t; return; }
+  const dx = x - sLX, dy = y - sLY, d = Math.hypot(dx, dy), dtm = Math.max(8, t - sLT);
+  if(d < 7) return;
+  const speed = d/dtm;
+  BRUSH = Math.min(1.5, Math.max(BRUSH, speed*.9*k));
+  if(t - sLast > 42){
+    sLast = t;
+    const nx = -dy/d, ny = dx/d, g = Math.min(1.7, .35 + speed*.8)*k, r = 22 + Math.min(26, d*.4), off = r*.55;
+    const vx = dx/dtm*1000*.16, vy = dy/dtm*1000*.16;
+    if(VOR.length > 16) VOR.splice(0, 2);
+    VOR.push({x:x + nx*off, y:y + ny*off, vx, vy, g, r}, {x:x - nx*off, y:y - ny*off, vx, vy, g:-g, r});
+  }
+  sLX = x; sLY = y; sLT = t;
+}
+function stepVortices(dt){
+  for(let j=VOR.length-1; j>=0; j--){
+    const v = VOR[j], dm = Math.exp(-dt*1.5);
+    flow(v.x, v.y, FT);
+    v.x += (v.vx + FVX*14)*dt; v.y += (v.vy + FVY*14)*dt;
+    v.vx *= dm; v.vy *= dm;
+    v.r += dt*12; v.g *= Math.exp(-dt*.5);
+    if(Math.abs(v.g) < .03) VOR.splice(j, 1);
+  }
+  BRUSH *= Math.exp(-dt*3);
+}
 let tapClear;
 addEventListener("pointerdown", e=>{ mx=e.clientX; my=e.clientY; clearTimeout(tapClear); }, {passive:true});
 addEventListener("pointerup", e=>{ if(e.pointerType !== "mouse"){ clearTimeout(tapClear); tapClear = setTimeout(()=>{ mx=my=-1e5; }, 520); } }, {passive:true});
@@ -665,6 +700,7 @@ addEventListener("touchend", ()=>{ touching = false; clearTimeout(snapTimer); sn
 
 // ---------- Sound: generated, opt-in. Wind that follows the scroll ----------
 let AC = null, master, windGain, windFilter, reverbIn, soundOn = false, lastAudioTick = 0;
+let waterGain, waterFilter, brushGain, landGain;
 function initAudio(){
   AC = new (window.AudioContext || window.webkitAudioContext)();
   master = AC.createGain(); master.gain.value = 0; master.connect(AC.destination);
@@ -680,6 +716,34 @@ function initAudio(){
   windGain = AC.createGain(); windGain.gain.value = 0;
   src.connect(windFilter); windFilter.connect(windGain); windGain.connect(master); windGain.connect(reverbIn);
   src.start();
+  // water: the same noise, narrower and lower, swelling with how stirred the water is
+  const ws = AC.createBufferSource(); ws.buffer = nb; ws.loop = true;
+  waterFilter = AC.createBiquadFilter(); waterFilter.type = "bandpass"; waterFilter.frequency.value = 700; waterFilter.Q.value = 1.1;
+  waterGain = AC.createGain(); waterGain.gain.value = 0;
+  ws.connect(waterFilter); waterFilter.connect(waterGain); waterGain.connect(master); waterGain.connect(reverbIn);
+  ws.start(0, 2.1);
+  // brush: an airy hiss, only while the cursor or a finger drags through
+  const wb = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate), wd = wb.getChannelData(0);
+  for(let i=0;i<wd.length;i++) wd[i] = Math.random()*2-1;
+  const bs = AC.createBufferSource(); bs.buffer = wb; bs.loop = true;
+  const bf = AC.createBiquadFilter(); bf.type = "highpass"; bf.frequency.value = 2600;
+  const bl = AC.createBiquadFilter(); bl.type = "lowpass"; bl.frequency.value = 7000;
+  brushGain = AC.createGain(); brushGain.gain.value = 0;
+  bs.connect(bf); bf.connect(bl); bl.connect(brushGain); brushGain.connect(master); brushGain.connect(reverbIn);
+  bs.start();
+  // landing: a deep, soft swell, like ink touching wet paper
+  const ls = AC.createBufferSource(); ls.buffer = nb; ls.loop = true;
+  const lf = AC.createBiquadFilter(); lf.type = "lowpass"; lf.frequency.value = 260;
+  landGain = AC.createGain(); landGain.gain.value = 0;
+  ls.connect(lf); lf.connect(landGain); landGain.connect(reverbIn);
+  ls.start(0, 4.3);
+}
+function landSound(){
+  if(!AC || !soundOn) return;
+  const t0 = AC.currentTime;
+  landGain.gain.cancelScheduledValues(t0);
+  landGain.gain.setTargetAtTime(.5, t0, .18);
+  landGain.gain.setTargetAtTime(0, t0 + .5, .9);
 }
 function setSound(on){
   if(on && !AC) initAudio();
@@ -702,6 +766,11 @@ function audioFrame(now){
   const speed = Math.min(1, Math.abs(velS));
   windGain.gain.setTargetAtTime(.025 + speed*.26, AC.currentTime, speed > .05 ? .25 : .6);
   windFilter.frequency.setTargetAtTime(380 + speed*520, AC.currentTime, .4);
+  let eddy = 0; for(const v of VOR) eddy += Math.abs(v.g);
+  const stir = Math.min(1.4, STIR + eddy*.12), lap = .75 + .25*Math.sin(now*.0011) * Math.sin(now*.0007 + 1);
+  waterGain.gain.setTargetAtTime((.012 + stir*.11)*lap, AC.currentTime, .35);
+  waterFilter.frequency.setTargetAtTime(520 + stir*420 + Math.sin(now*.0013)*90, AC.currentTime, .5);
+  brushGain.gain.setTargetAtTime(Math.min(.07, BRUSH*.05), AC.currentTime, BRUSH > .05 ? .06 : .25);
 }
 
 // ---------- Corner: a pine for the wind, and the languages written in grain ----------
@@ -917,8 +986,22 @@ function flow(x,y,T){
   const s3 = Math.sin(p3), c3 = Math.cos(p3), s4 = Math.sin(p4), c4 = Math.cos(p4);
   const drx = .5*c3*s4*1.06, dry = .5*s3*c4*.94;
   vx += drx*.6 + dry*.8; vy -= drx*.8 - dry*.6;
-  FVX = vx*1.35; FVY = vy*1.35 - .35;
+  FVX = vx*1.35 + TILTX*.9; FVY = vy*1.35 - .35 + TILTY*.9;
 }
+let TILTX = 0, TILTY = 0, tgX = 0, tgY = 0, tG0 = null, tB0 = 0, askedTilt = false;
+addEventListener("deviceorientation", e=>{
+  if(reduce || e.gamma == null || e.beta == null) return;
+  if(tG0 === null){ tG0 = e.gamma; tB0 = e.beta; }
+  // the resting angle follows slowly, so however the phone is held, only the lean you give it moves the water
+  tG0 += (e.gamma - tG0)*.004; tB0 += (e.beta - tB0)*.004;
+  tgX = Math.max(-1, Math.min(1, (e.gamma - tG0)/24));
+  tgY = Math.max(-1, Math.min(1, (e.beta - tB0)/24));
+});
+addEventListener("touchend", ()=>{
+  if(askedTilt) return; askedTilt = true;
+  if(typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function")
+    DeviceOrientationEvent.requestPermission().catch(()=>{});
+}, {passive:true});
 
 function computeInto(set, k, t, out, cA, cB, T){
   const A = set[k], B = set[k+1];
@@ -993,6 +1076,7 @@ function frame(now){
   // moving through the scroll stirs the water; when you stop it slowly goes still again
   STIR += ((reduce ? 0 : Math.min(1.4, Math.abs(velS)*.8)) - STIR)*Math.min(1, dt*(Math.abs(velS)*.8 > STIR ? 3 : .9));
   FT += dt*(1 + STIR*1.6);
+  TILTX += (tgX - TILTX)*Math.min(1, dt*1.4); TILTY += (tgY - TILTY)*Math.min(1, dt*1.4);
 
   const hasPtr = mx > -1e4;
   const tmx = hasPtr ? mx/W - .5 : 0, tmy = hasPtr ? my/H - .5 : 0;
@@ -1046,6 +1130,34 @@ function frame(now){
   };
   drawWash(washes[k], 1-t, cA); drawWash(washes[k+1], t, cB);
 
+  // as a painting comes to rest the ink is still wet: it darkens, and a soft edge creeps out into the paper, then dries
+  const nr = Math.round(sp);
+  if(Math.abs(sp - nr) < .015 && Math.abs(spV) < .12 && introT > .9){
+    if(landed !== nr){ landed = nr; if(washes[nr] && !reduce){ bleedK = nr; bleedT = 0; landSound(); } }
+  } else if(Math.abs(sp - nr) > .3) landed = -1;
+  bleedT += dt;
+  if(bleedK >= 0 && bleedT < 4){
+    const w = washes[bleedK], c = bleedK === k ? cA : bleedK === k+1 ? cB : null;
+    if(w && c){
+      const vis = bleedK === k ? 1-t : t;
+      const wet = smooth(0, .45, bleedT)*(1 - smooth(.5, 4, bleedT))*vis, spread = 1 - Math.exp(-bleedT*1.1);
+      const z = w.flat ? 0 : .55, sc = 1 + c.ds*z;
+      const x = c.ax + (w.pl.x0 - c.ax)*sc + c.dx*z, y = c.ay + (w.pl.y0 - c.ay)*sc + c.dy*z;
+      const ww = w.pl.sw*sc, hh = w.pl.sh*sc, cx = x + ww/2, cy = y + hh/2;
+      const BA = [.2, .12, .07], BS = [.006, .018, .034];
+      for(let j=0;j<3;j++){
+        const g = 1 + BS[j]*spread;
+        ctx.globalAlpha = wet*BA[j];
+        ctx.drawImage(w.m.soft, cx - ww*g/2, cy - hh*g/2, ww*g, hh*g);
+      }
+      ctx.globalAlpha = wet*.16;
+      ctx.drawImage(w.m.crisp, x, y, ww, hh);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  stepVortices(dt);
+  const nV = VOR.length;
   const R = W<700 ? 70 : 110, R2 = R*R;
   for(let i=0;i<N;i++){
     let x = P.x[i], y = P.y[i], a = P.a[i], m = P.m[i];
@@ -1072,6 +1184,15 @@ function frame(now){
         const d = Math.sqrt(d2), f2 = (1 - d/R), fs = f2*f2*(reduce?.6:1.5);
         vx += (dx/d)*fs + (-dy/d)*fs*.9 + .2*f2;
         vy += (dy/d)*fs + (dx/d)*fs*.9 - .4*f2;
+      }
+    }
+    if(nV){
+      const gx = x + OX[i], gy = y + OY[i];
+      for(let j=0;j<nV;j++){
+        const v = VOR[j], dx = gx - v.x, dy = gy - v.y, d2 = dx*dx + dy*dy, R2 = v.r*v.r*9;
+        if(d2 >= R2) continue;
+        const f = v.g*.22*v.r/(d2 + v.r*v.r)*(1 - d2/R2);
+        vx += -dy*f; vy += dx*f;
       }
     }
     vx = (vx - OX[i]*.011)*.935; vy = (vy - OY[i]*.011)*.935;
