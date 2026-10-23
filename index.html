@@ -104,6 +104,52 @@ canvas#scroll{position:fixed;inset:0;width:100%;height:100%;z-index:1;display:bl
 #hint,#plate{display:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (max-width:520px){ #credit{font-size:12px} }
+
+/* Reading: a quiet page of credentials under one living scene, opened from the pavilion */
+#lang{z-index:5}
+#btn-read{width:30px}
+canvas#scroll,#uigrain{transition:opacity .9s ease}
+html.reading{overflow:hidden}
+html.reading canvas#scroll,html.reading #uigrain{opacity:0}
+#read{
+  position:fixed;inset:0;z-index:4;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  visibility:hidden;opacity:0;transition:opacity .8s ease,visibility 0s linear .8s;outline:none;
+}
+#read.on{visibility:visible;opacity:1;transition:opacity .9s ease .25s}
+/* text scrolling up under the corner buttons fades into a band of paper, like mist */
+#read::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(74px + env(safe-area-inset-top,0px));z-index:2;pointer-events:none;
+  background:linear-gradient(var(--paper) 52%,rgba(228,224,213,0))}
+#read .col{position:relative;z-index:1}
+#read .col{max-width:600px;margin:0 auto;padding:calc(clamp(84px,13vh,132px) + env(safe-area-inset-top,0px)) 22px calc(96px + env(safe-area-inset-bottom,0px))}
+#r-name{font:italic 500 clamp(36px,6.4vw,48px)/1.08 var(--font-latin);margin:0 0 20px;color:var(--charcoal);letter-spacing:.003em}
+#r-scene{display:block;width:100%;aspect-ratio:2.5/1;margin:0 0 30px;
+  -webkit-mask-image:radial-gradient(ellipse 76% 74% at 50% 52%,#000 56%,transparent 100%);
+  mask-image:radial-gradient(ellipse 76% 74% at 50% 52%,#000 56%,transparent 100%)}
+#r-body p,#r-links{font:500 clamp(18.5px,2.3vw,21px)/1.6 var(--font-latin);color:var(--charcoal);margin:0 0 1em}
+#r-body .coda{font-style:italic;color:var(--charcoal-mid);margin-top:1.4em}
+#read a{color:var(--charcoal);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em;text-decoration-color:rgba(38,38,36,.5);
+  transition:text-shadow .5s ease,text-decoration-color .5s ease;border-radius:2px}
+/* a link darkens and bleeds a little, like ink touching damp paper */
+#read a:hover,#read a:focus-visible{text-decoration-color:var(--charcoal);text-shadow:0 0 .6px rgba(38,38,36,.75),0 0 8px rgba(38,38,36,.22);outline:none}
+#r-links{margin-top:2em;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+.r-icons{display:flex;align-items:flex-end;gap:clamp(14px,4.5vw,34px);margin-left:-8px}
+#read a.r-ic{display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;padding:4px 8px 2px}
+.r-ic canvas{display:block;width:clamp(76px,21vw,108px);height:clamp(52px,14vw,72px)}
+.r-ic span{font:italic 500 15.5px/1.2 var(--font-latin);letter-spacing:.07em;color:var(--charcoal-mid);
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.22em;text-decoration-color:rgba(38,38,36,.3)}
+#read a.r-ic:hover span,#read a.r-ic:focus-visible span{color:var(--charcoal);text-decoration-color:var(--charcoal)}
+#read a.r-mail{font:italic 500 clamp(17px,2.1vw,19px)/1.4 var(--font-latin);letter-spacing:.02em}
+#read[data-l="zh"] .r-ic span{font:500 13.5px/1.2 var(--font-han);letter-spacing:.12em}
+#read[data-l="zh"] #r-body .coda{font-style:normal}
+#r-back{appearance:none;border:0;background:none;padding:6px 0;margin-top:2.6em;font:italic 500 16px var(--font-latin);letter-spacing:.06em;color:var(--graphite);cursor:pointer}
+#r-back:hover,#r-back:focus-visible{color:var(--charcoal);outline:none;text-shadow:0 0 7px rgba(38,38,36,.2)}
+#read[data-l="zh"] #r-name{font:600 clamp(32px,5.4vw,42px)/1.2 var(--font-han);letter-spacing:.14em}
+#read[data-l="zh"] #r-body p,#read[data-l="zh"] #r-links{font-family:var(--font-han);font-size:clamp(16.5px,2vw,18.5px);line-height:1.95;letter-spacing:.05em}
+#read[data-l="zh"] #r-back{font:500 14px var(--font-han);letter-spacing:.3em}
+/* each line settles in like ink finding the paper */
+#read.on .ink{animation:inkIn 1.5s cubic-bezier(.2,.7,.2,1) both}
+@keyframes inkIn{from{opacity:0;filter:blur(6px);transform:translateY(7px)}to{opacity:1;filter:blur(0);transform:none}}
+@media (prefers-reduced-motion:reduce){ #read.on .ink{animation:none} #read,#read.on{transition:none} }
 </style>
 
 <div id="ground" aria-hidden="true"></div>
@@ -114,10 +160,20 @@ canvas#scroll{position:fixed;inset:0;width:100%;height:100%;z-index:1;display:bl
 
 <nav id="lang" class="ui" aria-label="Sound and language">
   <canvas id="corner" aria-hidden="true"></canvas>
+  <button type="button" id="btn-read" aria-pressed="false" aria-label="Credentials, a simple page" title="Credentials">Credentials</button>
   <button type="button" id="btn-sound" aria-pressed="false" aria-label="Sound, wind in the pines" title="Wind in the pines"></button>
   <button type="button" id="btn-en" data-l="en" aria-pressed="true" aria-label="English">EN</button>
   <button type="button" id="btn-zh" data-l="zh" aria-pressed="false" lang="zh-Hant" aria-label="繁體中文">繁體</button>
 </nav>
+<section id="read" tabindex="-1" aria-label="Credentials">
+  <div class="col">
+    <h1 id="r-name" class="ink">Joshua Metters</h1>
+    <canvas id="r-scene" aria-hidden="true"></canvas>
+    <div id="r-body"></div>
+    <div id="r-links" class="ink"></div>
+    <button type="button" id="r-back" class="ink">back to the scroll</button>
+  </div>
+</section>
 <div id="hint" class="ui" aria-hidden="true">scroll</div>
 <div id="plate" class="ui" aria-hidden="true"><div id="credit"></div><div id="distance" lang="zh-Hant"></div></div>
 <nav id="stones" aria-label="Links"></nav>
@@ -157,6 +213,33 @@ const COPY = {
 const MUSEUM = {en:"National Palace Museum, Taipei", zh:"國立故宮博物院"};
 const coarse = matchMedia("(pointer: coarse)").matches;
 const hintText = l => coarse ? COPY[l].hintTouch : COPY[l].hint;
+// the reading page: the same credentials, said plainly
+const GWU = "https://www.gwu.edu/", TSI = "https://jhsiehm.github.io/Tradesimple-intel/", ext = ' target="_blank" rel="noopener"';
+const RLINKS = ["https://www.linkedin.com/in/joshua-metters-8b0042225/", "https://joshmetters.substack.com/", "https://github.com/Jhsiehm", "mailto:joshua.metters@gwu.edu"];
+const READ = {
+  en: {
+    name: "Joshua Metters", label: "Credentials", back: "back to the scroll",
+    body: [
+      `I study International Affairs at <a href="${GWU}"${ext}>The George Washington University</a>.`,
+      `I’m building <a href="${TSI}"${ext}>TradeSimple Intel</a>, a way to backtest political signals against market history.`,
+      `I work on Special Projects at Statecraft, which brings AI to federal agencies. I’ve testified before the New Jersey Senate Education Committee, and I work on partnerships and founder events for IDSA + Design at GW.`,
+      `<i>Memory After Empire</i> is under review. I’m a certified Palantir AIP Builder, and I build with Anthropic’s Claude API.`
+    ],
+    coda: "Raised in New Jersey. Shaped in Taipei. Collating in Washington.",
+    links: ["linkedin", "substack", "github", "email"]
+  },
+  zh: {
+    name: "謝家祥", label: "履歷", back: "回到卷軸",
+    body: [
+      `就讀於<a href="${GWU}"${ext}>喬治華盛頓大學</a>國際事務。`,
+      `正在打造 <a href="${TSI}"${ext}>TradeSimple Intel</a>，以政治訊號回測市場歷史。`,
+      `於 Statecraft 負責特別專案，為聯邦機構提供 AI 服務。曾於新澤西州參議院教育委員會作證，並在 IDSA + Design，GW 負責合作夥伴與創辦人活動。`,
+      `《Memory After Empire》審閱中。持有 Palantir AIP 建構者認證，並以 Anthropic Claude API 進行開發。`
+    ],
+    coda: "在新澤西長大，在台北成形，在華盛頓校勘。",
+    links: ["LinkedIn", "Substack", "GitHub", "電子郵件"]
+  }
+};
 // Each painting stands for one of Guo Xi's three distances.
 const SCENES = [
   {type:"river", key:"river", seed:3},
@@ -187,7 +270,7 @@ const S = SCENES.length;
 const TONES = ["#262624", "#45443F", "#6B6C69"];
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const hanAll = Object.values(COPY.zh).flat().join("") + "聲音繁體高遠深平行旅山水有可行者望遊居郭熙林泉高致《》在新澤西長大台北成形華盛頓校勘，。友文工" + MUSEUM.zh + SCENES.map(s=>s.credit?s.credit.zh:"").join("");
+const hanAll = Object.values(COPY.zh).flat().join("") + [READ.zh.name, READ.zh.label, READ.zh.back, READ.zh.coda, ...READ.zh.body, ...READ.zh.links].join("") + "聲音繁體高遠深平行旅山水有可行者望遊居郭熙林泉高致《》在新澤西長大台北成形華盛頓校勘，。友文工" + MUSEUM.zh + SCENES.map(s=>s.credit?s.credit.zh:"").join("");
 const hanChars = Array.from(new Set(hanAll)).join("");
 const hl = document.createElement("link");
 hl.rel = "stylesheet";
@@ -743,6 +826,7 @@ function build(){
   ictx.clearRect(0,0,ink.width,ink.height); trailSkip = true; snapG = true;
   buildCorner();
   sizeUI();
+  if(reading){ rsBuild(); ricBuild(); rsT0 = -1e9; }
   built = true;
 }
 
@@ -776,6 +860,7 @@ function setLang(l){
   document.getElementById("btn-zh").setAttribute("aria-pressed", l==="zh");
   hintEl.textContent = hintText(l); hintEl.dataset.l = l;
   stirCorner([1,2], 3.2);
+  if(reading) renderRead();
   const c = COPY[l];
   srEl.lang = l==="zh" ? "zh-Hant" : "en";
   srEl.innerHTML = ["name","trade","memory","state","testimony","idsa","honors"].map(k=>`<p>${c[k][0]}. ${c[k][1]}.</p>`).join("");
@@ -905,6 +990,179 @@ function setSound(on){
   stirCorner([0], 1.6);
 }
 document.getElementById("btn-sound").addEventListener("click", ()=> setSound(!soundOn));
+
+// ---------- Reading: the pavilion opens a plain page of credentials under one living scene ----------
+const readEl = document.getElementById("read"), rName = document.getElementById("r-name"), rBody = document.getElementById("r-body");
+const rLinks = document.getElementById("r-links"), rBack = document.getElementById("r-back"), btnRead = document.getElementById("btn-read");
+const rsCv = document.getElementById("r-scene"), rsx = rsCv.getContext("2d");
+let reading = false, readT0 = -1e9, RSD = null, rsInk = null, rsI = null, rsT0 = 0;
+function renderRead(){
+  const R = READ[lang], zh = lang === "zh", d = q => `animation-delay:${q.toFixed(2)}s`;
+  readEl.dataset.l = lang; readEl.lang = zh ? "zh-Hant" : "en"; readEl.setAttribute("aria-label", R.label);
+  rName.textContent = R.name; rName.style.cssText = d(.2);
+  rBody.innerHTML = R.body.map((t,q)=>`<p class="ink" style="${d(.55 + q*.14)}">${t}</p>`).join("")
+    + `<p class="ink coda" style="${d(.55 + R.body.length*.14)}">${R.coda}</p>`;
+  rLinks.innerHTML = `<span class="r-icons">` + R.links.slice(0,3).map((t,q)=>
+      `<a class="r-ic" href="${RLINKS[q]}"${ext} title="${LINKS[q].from}"><canvas aria-hidden="true"></canvas><span>${t}</span></a>`).join("")
+    + `</span><a class="r-mail" href="${RLINKS[3]}" aria-label="${R.links[3]}: ${EMAIL}">${EMAIL}</a>`;
+  rLinks.style.cssText = d(.75 + R.body.length*.14);
+  ricBuild();
+  rBack.textContent = R.back; rBack.style.cssText = d(.95 + R.body.length*.14);
+}
+function setReading(on){
+  if(on === reading) return;
+  reading = on; readT0 = performance.now();
+  if(on){ renderRead(); readEl.scrollTop = 0; rsOpen(); }
+  document.documentElement.classList.toggle("reading", on);
+  readEl.classList.toggle("on", on);
+  btnRead.setAttribute("aria-pressed", on);
+  stirCorner([3], 2.6);
+  STIR = Math.max(STIR, 1.3);   // the water stirs as the scroll dissolves, or as it gathers again
+  if(on) setTimeout(()=>{ if(reading) readEl.focus({preventScroll:true}); }, 80);
+  else if(readEl.contains(document.activeElement)) btnRead.focus({preventScroll:true});
+  try{ history.replaceState(null, "", on ? "#read" : location.pathname + location.search); }catch(e){}
+}
+btnRead.addEventListener("click", ()=> setReading(!reading));
+rBack.addEventListener("click", ()=> setReading(false));
+addEventListener("keydown", e=>{ if(e.key === "Escape" && reading) setReading(false); });
+addEventListener("hashchange", ()=> setReading(location.hash === "#read"));
+
+// the scene: Huang Gongwang's Fuchun Mountains in grain, gathering out of the water and breathing
+function rsBuild(){
+  const m = density.huang; if(!m) return;
+  const r = rsCv.getBoundingClientRect(); if(r.width < 10) return;
+  const w = r.width, h = r.height, dpr = Math.min(2, devicePixelRatio||1);
+  rsCv.width = Math.round(w*dpr); rsCv.height = Math.round(h*dpr); rsx.setTransform(dpr,0,0,dpr,0,0);
+  rsInk = document.createElement("canvas"); rsInk.width = Math.ceil(w/2); rsInk.height = Math.ceil(h/2); rsI = rsInk.getContext("2d");
+  const pw = w*.97, ph = pw*m.h/m.w, x0 = (w - pw)/2, y0 = (h - ph)/2 + h*.03;
+  const n = innerWidth < 700 ? 2800 : 4600, rng = mulberry32(4242);
+  const nn = m.d.length, cdf = new Float32Array(nn); let acc = 0;
+  for(let q=0;q<nn;q++){ const v = m.d[q]; acc += v > .05 ? Math.pow(v, 1.45) : 0; cdf[q] = acc; }
+  const F = () => new Float32Array(n), sizeK = Math.max(.7, Math.min(1.2, pw/m.w*1.1));
+  const D = {n, w, h, pl:{x0, y0, pw, ph}, hx:F(), hy:F(), sx:F(), sy:F(), a:F(), s:F(), c:new Uint8Array(n), ph:F(), dr:F(), mg:F(),
+    ox:F(), oy:F(), vx:F(), vy:F(), fx:F(), fy:F(), fa:F(), fm:F()};
+  for(let i=0;i<n;i++){
+    const u = rng()*acc; let lo = 0, hi = nn-1;
+    while(lo<hi){ const mid=(lo+hi)>>1; if(cdf[mid]<u) lo=mid+1; else hi=mid; }
+    const ix = lo % m.w, iy = (lo/m.w)|0, v = m.d[lo];
+    D.hx[i] = x0 + (ix + rng())*pw/m.w; D.hy[i] = y0 + (iy + rng())*ph/m.h;
+    D.a[i] = Math.min(1, .32 + .95*Math.pow(v,.7)); D.s[i] = (.65 + v*1.05)*sizeK;
+    D.c[i] = v > .45 ? 0 : v > .2 ? 1 : 2; D.ph[i] = rng()*6.283; D.dr[i] = rng(); D.mg[i] = .35 + rng()*.65;
+  }
+  RSD = D;
+}
+// the links wear the ending's icons: pines, the empty pavilion, the fisherman, each a little living grain
+let RIC = [];
+function ricBuild(){
+  RIC = [];
+  rLinks.querySelectorAll("a.r-ic").forEach((aEl,k)=>{
+    const cv = aEl.querySelector("canvas"), m = density[LINKS[k].icon], r = cv.getBoundingClientRect();
+    if(!m || r.width < 4) return;
+    const w = r.width, h = r.height, dpr = Math.min(2, devicePixelRatio||1), g = cv.getContext("2d");
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); g.setTransform(dpr,0,0,dpr,0,0);
+    const sc = Math.min(w/m.w, h/m.h)*.96, pw = m.w*sc, ph = m.h*sc, x0 = (w - pw)/2, y0 = h - ph;
+    const n = 900, rng = mulberry32(900 + k*7), nn = m.d.length, cdf = new Float32Array(nn); let acc = 0;
+    for(let q=0;q<nn;q++){ const v = m.d[q]; acc += v > .05 ? Math.pow(v, 1.3) : 0; cdf[q] = acc; }
+    const F = () => new Float32Array(n);
+    const I = {cv, g, w, h, n, hx:F(), hy:F(), sx:F(), sy:F(), a:F(), s:F(), c:new Uint8Array(n), ph:F(), dr:F(), ox:F(), oy:F(), vx:F(), vy:F()};
+    for(let i=0;i<n;i++){
+      const u = rng()*acc; let lo = 0, hi = nn-1;
+      while(lo<hi){ const mid=(lo+hi)>>1; if(cdf[mid]<u) lo=mid+1; else hi=mid; }
+      const ix = lo % m.w, iy = (lo/m.w)|0, v = m.d[lo];
+      I.hx[i] = x0 + (ix + rng())*sc; I.hy[i] = y0 + (iy + rng())*sc;
+      I.sx[i] = rng()*w; I.sy[i] = rng()*h*1.4 - h*.2;
+      I.a[i] = Math.min(1, .38 + .9*Math.pow(v,.7)); I.s[i] = .7 + v*.6; I.c[i] = v > .45 ? 0 : v > .2 ? 1 : 2;
+      I.ph[i] = rng()*6.283; I.dr[i] = rng();
+    }
+    // hovering or focusing a link stirs its icon, the way the ending's stones answer the cursor
+    const stir = () => { for(let i=0;i<n;i++){ I.vx[i] += (Math.random()-.5)*2.2; I.vy[i] += (Math.random()-.5)*1.6 - .5; } };
+    aEl.addEventListener("pointerenter", stir); aEl.addEventListener("focus", stir);
+    RIC.push(I);
+  });
+}
+function ricFrame(now){
+  const T = now/1000, g0 = reduce ? 1 : clamp01((now - rsT0 - 1300)/2400);
+  for(const I of RIC){
+    const r = I.cv.getBoundingClientRect(), px = mx - r.left, py = my - r.top;
+    const hasP = !reduce && mx > -1e4 && px > -20 && px < I.w + 20 && py > -20 && py < I.h + 20;
+    I.g.clearRect(0,0,I.w,I.h);
+    for(let tone=0; tone<3; tone++){
+      I.g.fillStyle = TONES[tone];
+      for(let i=0;i<I.n;i++){
+        if(I.c[i] !== tone) continue;
+        const il = clamp01((g0 - I.dr[i]*.4)/.6), e = ease(il), sn = Math.sin(Math.PI*il);
+        let x = I.sx[i] + (I.hx[i] - I.sx[i])*e, y = I.sy[i] + (I.hy[i] - I.sy[i])*e;
+        if(!reduce){ x += Math.sin(T*.6 + I.ph[i])*.25 + sn*Math.sin(T*1.3 + I.ph[i]*3)*6; y += Math.cos(T*.5 + I.ph[i])*.2 - sn*4; }
+        let vx = I.vx[i], vy = I.vy[i];
+        if(hasP){
+          const dx = x + I.ox[i] - px, dy = y + I.oy[i] - py, d2 = dx*dx + dy*dy;
+          if(d2 < 324 && d2 > .01){ const d = Math.sqrt(d2), f = 1 - d/18; vx += (dx/d)*f*.45 + (-dy/d)*f*.35; vy += (dy/d)*f*.45 + (dx/d)*f*.35 - .1*f; }
+        }
+        vx = (vx - I.ox[i]*.06)*.87; vy = (vy - I.oy[i]*.06)*.87;
+        I.vx[i] = vx; I.vy[i] = vy; I.ox[i] += vx; I.oy[i] += vy;
+        const disp = Math.abs(I.ox[i]) + Math.abs(I.oy[i]);
+        I.g.globalAlpha = (.05 + (I.a[i] - .05)*e)*(disp > 1 ? 1/(1 + disp*.05) : 1);
+        I.g.fillRect(x + I.ox[i], y + I.oy[i], I.s[i], I.s[i]);
+      }
+    }
+    I.g.globalAlpha = 1;
+  }
+}
+function rsOpen(){
+  const r = rsCv.getBoundingClientRect();
+  if(!RSD || Math.abs(r.width - RSD.w) > 2) rsBuild();
+  if(!RSD) return;
+  const D = RSD;
+  for(let i=0;i<D.n;i++){ D.sx[i] = Math.random()*D.w*1.3 - D.w*.15; D.sy[i] = Math.random()*D.h*1.6 - D.h*.3; D.ox[i] = D.oy[i] = D.vx[i] = D.vy[i] = 0; }
+  rsI.clearRect(0,0,rsInk.width,rsInk.height);
+  rsT0 = performance.now();
+}
+function rsFrame(now){
+  const D = RSD; if(!D) return;
+  const T = now/1000, g = reduce ? 1 : clamp01((now - rsT0 - 250)/3200), gE = ease(g), P = D.pl, m = density.huang;
+  rsx.clearRect(0,0,D.w,D.h);
+  // the painting's own wash blooms underneath once the grain has found its place
+  rsx.globalAlpha = .24*gE; rsx.drawImage(m.soft, P.x0, P.y0, P.pw, P.ph);
+  rsx.globalAlpha = .2*gE*gE; rsx.drawImage(m.crisp, P.x0, P.y0, P.pw, P.ph);
+  rsI.globalCompositeOperation = "destination-out"; rsI.globalAlpha = 1; rsI.fillStyle = "rgba(0,0,0,.07)";
+  rsI.fillRect(0,0,rsInk.width,rsInk.height);
+  rsI.globalCompositeOperation = "source-over"; rsI.fillStyle = "#34332F";
+  const rect = rsCv.getBoundingClientRect(), px = mx - rect.left, py = my - rect.top;
+  const hasP = !reduce && mx > -1e4 && px > -50 && px < D.w + 50 && py > -50 && py < D.h + 50;
+  const L = Math.min(D.w, D.h)*.55, RR = D.w < 420 ? 34 : 46, RR2 = RR*RR;
+  for(let i=0;i<D.n;i++){
+    const il = clamp01((g - D.dr[i]*.45)/.55), e = ease(il), sn = Math.sin(Math.PI*il);
+    let x = D.sx[i] + (D.hx[i] - D.sx[i])*e, y = D.sy[i] + (D.hy[i] - D.sy[i])*e;
+    if(sn > .001){
+      const lift = sn*L*D.mg[i];
+      flow(x, y, T); const hx = x + FVX*lift*.5, hy = y + FVY*lift*.5;
+      flow(hx, hy, T); x = hx + FVX*lift*.5; y = hy + FVY*lift*.5;
+    }
+    if(!reduce){ const amp = .15 + (1 - Math.min(1, D.a[i]*2.5))*1.5; x += Math.sin(T*.4 + D.ph[i])*amp; y += Math.cos(T*.31 + D.ph[i]*1.7)*amp*.6; }
+    let vx = D.vx[i], vy = D.vy[i];
+    if(hasP){
+      const dx = x + D.ox[i] - px, dy = y + D.oy[i] - py, d2 = dx*dx + dy*dy;
+      if(d2 < RR2 && d2 > .01){ const d = Math.sqrt(d2), f = 1 - d/RR, fs = f*f*1.2; vx += (dx/d)*fs + (-dy/d)*fs*.9; vy += (dy/d)*fs + (dx/d)*fs*.9 - .3*f; }
+    }
+    vx = (vx - D.ox[i]*.012)*.93; vy = (vy - D.oy[i]*.012)*.93;
+    D.vx[i] = vx; D.vy[i] = vy; D.ox[i] += vx; D.oy[i] += vy;
+    const disp = Math.abs(D.ox[i]) + Math.abs(D.oy[i]);
+    x += D.ox[i]; y += D.oy[i];
+    const mm = Math.max(sn, Math.min(1, disp/28));
+    D.fx[i] = x; D.fy[i] = y; D.fm[i] = mm; D.fa[i] = (.06 + (D.a[i] - .06)*Math.min(1, e*1.4))*(1 - .55*mm);
+    if(mm > .04){ const z = 1.1*(1 + 1.6*mm); rsI.globalAlpha = D.a[i]*mm*.14; rsI.fillRect(x*.5 - z*.5, y*.5 - z*.5, z, z); }
+  }
+  rsx.globalAlpha = .85; rsx.drawImage(rsInk, 0, 0, D.w, D.h);
+  for(let tone=0; tone<3; tone++){
+    rsx.fillStyle = TONES[tone];
+    for(let i=0;i<D.n;i++){
+      if(D.c[i] !== tone || D.fa[i] < .01) continue;
+      rsx.globalAlpha = D.fa[i]; rsx.fillRect(D.fx[i], D.fy[i], D.s[i], D.s[i]);
+    }
+  }
+  rsx.globalAlpha = 1;
+  ricFrame(now);
+}
 document.addEventListener("visibilitychange", ()=>{
   if(!AC) return;
   if(document.hidden) AC.suspend(); else if(soundOn) AC.resume();
@@ -933,7 +1191,7 @@ function buildCorner(){
   const SS = 2, oc = document.createElement("canvas"); oc.width = cw*SS; oc.height = ch*SS;
   const o = oc.getContext("2d", {willReadFrequently:true}); o.scale(SS, SS);
   const hx=[], hy=[], gr=[], sw=[], rects=[];
-  ["btn-sound","btn-en","btn-zh"].forEach((id,gi)=>{
+  ["btn-sound","btn-en","btn-zh","btn-read"].forEach((id,gi)=>{
     const r = document.getElementById(id).getBoundingClientRect();
     const cx = r.left - nb.left + px + r.width/2, cy = r.top - nb.top + py + r.height/2;
     rects.push([r.left, r.top, r.right, r.bottom]);
@@ -943,6 +1201,11 @@ function buildCorner(){
       const m = density.icon_pine1;
       if(m){ const hh = 44, ww = hh*m.w/m.h; top = cy - hh/2; base = cy + hh/2;
         o.drawImage(m.crisp, cx-ww/2, top, ww, hh); o.drawImage(m.crisp, cx-ww/2+.4, top, ww, hh); }
+    } else if(gi===3){
+      // Fan Kuan's great peak, the same mountain as the tab icon: the way into the plain page
+      const m = density.fankuan;
+      if(m){ const ww = 30, hh = 31; top = cy - hh/2; base = cy + hh/2;
+        o.drawImage(m.crisp, 20, 0, 360, 372, cx-ww/2, top, ww, hh); }
     } else {
       o.font = gi===1 ? '600 18px "Cormorant Garamond",serif' : '600 15.5px "Noto Serif TC",serif';
       o.textAlign = "center"; o.textBaseline = "middle";
@@ -963,7 +1226,7 @@ function buildCorner(){
   CG = {n, cw, ch, left: nb.left - px, top: nb.top - py, rects,
     hx:F(hx), hy:F(hy), g:Uint8Array.from(gr), sw:F(sw),
     ox:new Float32Array(n), oy:new Float32Array(n), vx:new Float32Array(n), vy:new Float32Array(n),
-    ph:Float32Array.from({length:n}, ()=>Math.random()*6.283), ga:[.5,.9,.4], wind:0};
+    ph:Float32Array.from({length:n}, ()=>Math.random()*6.283), ga:[.5,.9,.4,.6], wind:0};
   for(let i=0;i<n;i++){ CG.ox[i] = (Math.random()-.5)*46; CG.oy[i] = (Math.random()-.5)*30; }
 }
 function stirCorner(groups, f){
@@ -977,8 +1240,8 @@ function drawCorner(T, dt){
   const c = CG, hasP = mx > -1e4, lx = mx - c.left, ly = my - c.top;
   cctx.clearRect(0,0,c.cw,c.ch);
   const hov = c.rects.map(r => hasP && mx >= r[0] && mx <= r[2] && my >= r[1] && my <= r[3]);
-  const tgt = [soundOn ? .92 : .5, lang==="en" ? .95 : .42, lang==="zh" ? .95 : .42].map((v,k)=> Math.min(1, v + (hov[k] ? .2 : 0)));
-  for(let k=0;k<3;k++) c.ga[k] += (tgt[k] - c.ga[k])*Math.min(1, dt*5);
+  const tgt = [soundOn ? .92 : .5, lang==="en" ? .95 : .42, lang==="zh" ? .95 : .42, reading ? .95 : .62].map((v,k)=> Math.min(1, v + (hov[k] ? .2 : 0)));
+  for(let k=0;k<4;k++) c.ga[k] += (tgt[k] - c.ga[k])*Math.min(1, dt*5);
   c.wind += ((soundOn && !reduce ? .35 + Math.min(1, Math.abs(velS))*1.4 : 0) - c.wind)*Math.min(1, dt*2);
   cctx.fillStyle = "#262624";
   for(let i=0;i<c.n;i++){
@@ -1198,6 +1461,8 @@ function frame(now){
   if(!start) start = now;
   const dt = Math.min(.05, (now - (last||now))/1000); last = now;
   const T = now/1000;
+  if(reading || now - readT0 < 1100) rsFrame(now);
+  if(reading && now - readT0 > 1100){ drawCorner(T, dt); audioFrame(now); return; }
 
   const target = Math.min(S-1, scrollY/segH);
   // the grain rides a soft spring behind the scroll: it gathers speed, glides, and settles like ink in water.
@@ -1541,6 +1806,7 @@ Promise.all([
 ]).then(()=>{
   build();
   requestAnimationFrame(frame);
+  if(location.hash === "#read") setReading(true);
 });
 })();
 </script>
