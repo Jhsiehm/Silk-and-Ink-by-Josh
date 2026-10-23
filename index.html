@@ -117,10 +117,31 @@ html.reading canvas#scroll,html.reading #uigrain{opacity:0}
 }
 #read.on{visibility:visible;opacity:1;transition:opacity .9s ease .25s}
 /* text scrolling up under the corner buttons fades into a band of paper, like mist */
-#read::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(74px + env(safe-area-inset-top,0px));z-index:2;pointer-events:none;
-  background:linear-gradient(var(--paper) 52%,rgba(228,224,213,0))}
-#read .col{position:relative;z-index:1}
-#read .col{max-width:600px;margin:0 auto;padding:calc(clamp(84px,13vh,132px) + env(safe-area-inset-top,0px)) 22px calc(96px + env(safe-area-inset-bottom,0px))}
+#read::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(70px + env(safe-area-inset-top,0px));z-index:2;pointer-events:none;
+  background:linear-gradient(rgba(217,211,197,.97) 48%,rgba(217,211,197,0))}
+/* the wall: mounting silk, woven and mottled, darker toward the edges */
+#read{overflow-x:hidden;background-color:#D9D3C5;background-image:var(--tex-mount,none),radial-gradient(130% 100% at 50% 38%,transparent 48%,rgba(38,38,36,.17) 100%);
+  background-size:360px 360px,100% 100%}
+/* the sheet: fibrous paper hung between two rollers, unrolling downward as the page opens */
+#read .col{position:relative;z-index:1;box-sizing:border-box;width:min(660px,calc(100% - 22px));max-width:none;
+  margin:calc(clamp(70px,11vh,104px) + env(safe-area-inset-top,0px)) auto calc(72px + env(safe-area-inset-bottom,0px));
+  padding:clamp(40px,6vw,62px) clamp(20px,5.5vw,58px) clamp(44px,6vw,66px);
+  background-color:#ECE8DD;background-image:var(--tex-sheet,none),linear-gradient(90deg,rgba(38,38,36,.06),transparent 5%,transparent 95%,rgba(38,38,36,.06));
+  background-size:300px 300px,100% 100%;
+  box-shadow:0 1px 1px rgba(38,38,36,.1),0 18px 44px -14px rgba(38,38,36,.32),inset 0 0 0 1px rgba(38,38,36,.05),inset 0 0 38px rgba(120,108,88,.1)}
+#read .col::before,#read .col::after{content:"";position:absolute;left:-17px;right:-17px;height:12px;border-radius:6px;pointer-events:none;
+  background:linear-gradient(90deg,#191714 0 11px,transparent 11px calc(100% - 11px),#191714 calc(100% - 11px)),
+             linear-gradient(180deg,#5B534A 0%,#36312B 48%,#1F1C19 100%);
+  box-shadow:0 2px 5px rgba(20,18,16,.3)}
+#read .col::before{top:-7px}
+#read .col::after{bottom:-7px;height:15px;left:-22px;right:-22px;border-radius:7.5px}
+#read.on .col{animation:unroll 1.7s cubic-bezier(.33,.7,.18,1) both}
+@media (max-width:560px){
+  #read .col{width:calc(100% - 40px)}
+  #read .col::before{left:-10px;right:-10px}
+  #read .col::after{left:-14px;right:-14px}
+}
+@keyframes unroll{from{clip-path:inset(-24px -40px calc(100% - 8px) -40px)}to{clip-path:inset(-24px -40px -30px -40px)}}
 #r-name{font:italic 500 clamp(36px,6.4vw,48px)/1.08 var(--font-latin);margin:0 0 20px;color:var(--charcoal);letter-spacing:.003em}
 #r-scene{display:block;width:100%;aspect-ratio:2.5/1;margin:0 0 30px;
   -webkit-mask-image:radial-gradient(ellipse 76% 74% at 50% 52%,#000 56%,transparent 100%);
@@ -149,7 +170,7 @@ html.reading canvas#scroll,html.reading #uigrain{opacity:0}
 /* each line settles in like ink finding the paper */
 #read.on .ink{animation:inkIn 1.5s cubic-bezier(.2,.7,.2,1) both}
 @keyframes inkIn{from{opacity:0;filter:blur(6px);transform:translateY(7px)}to{opacity:1;filter:blur(0);transform:none}}
-@media (prefers-reduced-motion:reduce){ #read.on .ink{animation:none} #read,#read.on{transition:none} }
+@media (prefers-reduced-motion:reduce){ #read.on .ink,#read.on .col{animation:none} #read,#read.on{transition:none} }
 </style>
 
 <div id="ground" aria-hidden="true"></div>
@@ -178,10 +199,11 @@ html.reading canvas#scroll,html.reading #uigrain{opacity:0}
 <div id="plate" class="ui" aria-hidden="true"><div id="credit"></div><div id="distance" lang="zh-Hant"></div></div>
 <nav id="stones" aria-label="Links"></nav>
 <a id="trade-hit" class="hit" href="https://jhsiehm.github.io/Tradesimple-intel/" target="_blank" rel="noopener" aria-label="TradeSimple Intel demo" tabindex="-1"></a>
+<a id="state-hit" class="hit" href="https://statecraft.ai/" target="_blank" rel="noopener" aria-label="Statecraft" tabindex="-1"></a>
 <a id="mail-hit" class="hit" href="mailto:joshua.metters@gwu.edu" aria-label="Email joshua.metters@gwu.edu" tabindex="-1"></a>
 
 <main id="sr" class="sr"></main>
-<noscript><p>Joshua Metters. International Affairs, The George Washington University. Building TradeSimple. Special Projects, Statecraft. Testified before the New Jersey Senate.</p></noscript>
+<noscript><p>Joshua Metters. International Affairs, The George Washington University. Building TradeSimple Intel. Special Projects, Statecraft: building AI agents for government. Testified twice before the New Jersey Senate Education Committee on financial literacy reform.</p></noscript>
 
 <script>
 (() => {
@@ -190,8 +212,8 @@ const COPY = {
   en: {
     name:  ["Joshua Metters", "International Affairs, The George Washington University"],
     trade: ["Building TradeSimple Intel", "Backtest political signals against market history.", "Open the demo"],
-    state: ["Special Projects, Statecraft", "AI for federal agencies"],
-    testimony: ["Testified before the New Jersey Senate", "Education Committee"],
+    state: ["Special Projects, Statecraft", "Building AI agents for government", "statecraft.ai"],
+    testimony: ["Testified twice before the New Jersey Senate", "Education Committee, on financial literacy reform, advancing legislation"],
     idsa: ["IDSA + Design at GW", "Partnerships and founder events"],
     memory: ["Memory After Empire", "Under review"],
     hint: "scroll",
@@ -200,8 +222,8 @@ const COPY = {
   zh: {
     name:  ["謝家祥", "喬治華盛頓大學　國際事務"],
     trade: ["正在打造 TradeSimple Intel", "以政治訊號回測市場歷史", "開啟示範"],
-    state: ["Statecraft　特別專案", "聯邦機構的 AI 服務"],
-    testimony: ["曾於新澤西州參議院作證", "教育委員會"],
+    state: ["Statecraft　特別專案", "為政府打造 AI 代理", "statecraft.ai"],
+    testimony: ["兩度於新澤西州參議院作證", "教育委員會．金融素養改革，推動立法"],
     idsa: ["IDSA + Design，GW", "合作夥伴與創辦人活動"],
     memory: ["Memory After Empire", "審閱中"],
     hint: "捲動",
@@ -212,7 +234,7 @@ const MUSEUM = {en:"National Palace Museum, Taipei", zh:"國立故宮博物院"}
 const coarse = matchMedia("(pointer: coarse)").matches;
 const hintText = l => coarse ? COPY[l].hintTouch : COPY[l].hint;
 // the reading page: the same credentials, said plainly
-const GWU = "https://www.gwu.edu/", TSI = "https://jhsiehm.github.io/Tradesimple-intel/", ext = ' target="_blank" rel="noopener"';
+const GWU = "https://www.gwu.edu/", TSI = "https://jhsiehm.github.io/Tradesimple-intel/", SCR = "https://statecraft.ai/", NJ1 = "https://www.njsendems.org/m/newsflash/home/detail/495", NJ2 = "https://www.njsendems.org/m/newsflash/home/detail/1276", ext = ' target="_blank" rel="noopener"';
 const RLINKS = ["https://www.linkedin.com/in/joshua-metters-8b0042225/", "https://joshmetters.substack.com/", "https://github.com/Jhsiehm", "mailto:joshua.metters@gwu.edu"];
 const READ = {
   en: {
@@ -220,7 +242,8 @@ const READ = {
     body: [
       `I study International Affairs at <a href="${GWU}"${ext}>The George Washington University</a>.`,
       `I’m building <a href="${TSI}"${ext}>TradeSimple Intel</a>, a way to backtest political signals against market history.`,
-      `I work on Special Projects at Statecraft, which brings AI to federal agencies. I’ve testified before the New Jersey Senate Education Committee, and I work on partnerships and founder events for IDSA + Design at GW.`,
+      `I work on Special Projects at <a href="${SCR}"${ext}>Statecraft</a>, building AI agents for government.`,
+      `I’ve testified twice before the New Jersey Senate Education Committee on financial literacy reform (<a href="${NJ1}"${ext}>first</a>, <a href="${NJ2}"${ext}>second</a>), advancing legislation. I also work on partnerships and founder events for IDSA + Design at GW.`,
       `<i>Memory After Empire</i> is under review.`
     ],
     coda: "Raised in New Jersey. Shaped in Taipei. Collating in Washington.",
@@ -231,7 +254,8 @@ const READ = {
     body: [
       `就讀於<a href="${GWU}"${ext}>喬治華盛頓大學</a>國際事務。`,
       `正在打造 <a href="${TSI}"${ext}>TradeSimple Intel</a>，以政治訊號回測市場歷史。`,
-      `於 Statecraft 負責特別專案，為聯邦機構提供 AI 服務。曾於新澤西州參議院教育委員會作證，並在 IDSA + Design，GW 負責合作夥伴與創辦人活動。`,
+      `於 <a href="${SCR}"${ext}>Statecraft</a> 負責特別專案，為政府打造 AI 代理。`,
+      `曾兩度於新澤西州參議院教育委員會就金融素養改革作證（<a href="${NJ1}"${ext}>第一次</a>、<a href="${NJ2}"${ext}>第二次</a>），推動立法。另於 IDSA + Design，GW 負責合作夥伴與創辦人活動。`,
       `《Memory After Empire》審閱中。`
     ],
     coda: "在新澤西長大，在台北成形，在華盛頓校勘。",
@@ -282,6 +306,7 @@ const spacer = document.getElementById("spacer");
 const hintEl = document.getElementById("hint");
 const stonesEl = document.getElementById("stones");
 const tradeHit = document.getElementById("trade-hit"), mailHit = document.getElementById("mail-hit");
+const HITS = [[tradeHit, "trade"], [document.getElementById("state-hit"), "state"]];
 const EMAIL = "joshua.metters@gwu.edu";
 let MAILBOX = null;
 let LINKPOS = [];
@@ -862,7 +887,7 @@ function setLang(l){
   srEl.lang = l==="zh" ? "zh-Hant" : "en";
   srEl.innerHTML = ["name","trade","memory","state","testimony","idsa"].map(k=>`<p>${c[k][0]}. ${c[k][1]}.</p>`).join("");
   plateScene = -1;
-  tradeHit.dataset.live = "";
+  for(const [h] of HITS) h.dataset.live = "";
   const E = ENDC[l];
   srEl.innerHTML += `<p>${E.q.join(" ")} ${E.src}.</p><p>${E.lines}</p><p>${EMAIL}</p>`;
   if(!stonesEl.children.length){
@@ -993,7 +1018,54 @@ const readEl = document.getElementById("read"), rName = document.getElementById(
 const rLinks = document.getElementById("r-links"), rBack = document.getElementById("r-back"), btnRead = document.getElementById("btn-read");
 const rsCv = document.getElementById("r-scene"), rsx = rsCv.getContext("2d");
 let reading = false, readT0 = -1e9, RSD = null, rsInk = null, rsI = null, rsT0 = 0;
+// paper you can almost feel: speckle, fibres and mottling for the sheet; the same plus a fine weave for the silk mount
+let texDone = false;
+function makeTex(size, o){
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const g = c.getContext("2d"), r = mulberry32(o.seed);
+  const at = (x, y, pad, f) => {
+    const xs = [x], ys = [y];
+    if(x < pad) xs.push(x + size); if(x > size - pad) xs.push(x - size);
+    if(y < pad) ys.push(y + size); if(y > size - pad) ys.push(y - size);
+    for(const X of xs) for(const Y of ys) f(X, Y);
+  };
+  for(let i=0;i<o.blots;i++){
+    const x = r()*size, y = r()*size, rad = size*(.06 + r()*.16), dark = r() < .6;
+    at(x, y, rad, (X,Y)=>{
+      const gr = g.createRadialGradient(X, Y, 0, X, Y, rad);
+      gr.addColorStop(0, dark ? `rgba(70,62,50,${o.blotA*(.5 + r()*.5)})` : `rgba(255,253,246,${o.blotA*1.4})`);
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gr; g.fillRect(X - rad, Y - rad, rad*2, rad*2);
+    });
+  }
+  if(o.weave){
+    for(let y=0;y<size;y+=2){ g.fillStyle = `rgba(60,54,44,${(.02 + r()*.03)*o.ink})`; g.fillRect(0, y + r()*.4, size, .7); }
+    for(let x=0;x<size;x+=3){ g.fillStyle = `rgba(255,252,244,${.04 + r()*.05})`; g.fillRect(x + r()*.4, 0, .8, size); }
+  }
+  g.lineCap = "round";
+  for(let i=0;i<o.fibres;i++){
+    const x = r()*size, y = r()*size, L = size*(.012 + r()*.05), a = r()*Math.PI, light = r() < .35;
+    const dx = Math.cos(a)*L, dy = Math.sin(a)*L, bend = (r() - .5)*L*.6;
+    at(x, y, L + 4, (X,Y)=>{
+      g.strokeStyle = light ? `rgba(255,253,247,${.3 + r()*.3})` : `rgba(48,44,38,${(.05 + r()*.1)*o.ink})`;
+      g.lineWidth = (.6 + r()*.9)*size/600;
+      g.beginPath(); g.moveTo(X, Y); g.quadraticCurveTo(X + dx*.5 - dy*bend/L, Y + dy*.5 + dx*bend/L, X + dx, Y + dy); g.stroke();
+    });
+  }
+  for(let i=0;i<o.specks;i++){
+    const x = r()*size, y = r()*size, z = (.6 + r()*r()*1.8)*size/600, dark = r() < .82;
+    g.fillStyle = dark ? `rgba(38,38,36,${Math.min(.6, (.05 + r()*r()*.3)*o.ink)})` : `rgba(255,253,247,${.3 + r()*.4})`;
+    g.fillRect(x, y, z, z);
+  }
+  return c.toDataURL("image/png");
+}
+function makePaper(){
+  if(texDone) return; texDone = true;
+  readEl.style.setProperty("--tex-mount", `url(${makeTex(720, {seed:11, blots:60, blotA:.11, weave:true, fibres:1700, specks:24000, ink:1.7})})`);
+  readEl.style.setProperty("--tex-sheet", `url(${makeTex(600, {seed:23, blots:34, blotA:.045, weave:false, fibres:700, specks:7000, ink:1})})`);
+}
 function renderRead(){
+  makePaper();
   const R = READ[lang], zh = lang === "zh", d = q => `animation-delay:${q.toFixed(2)}s`;
   readEl.dataset.l = lang; readEl.lang = zh ? "zh-Hant" : "en"; readEl.setAttribute("aria-label", R.label);
   rName.textContent = R.name; rName.style.cssText = d(.2);
@@ -1709,15 +1781,16 @@ function frame(now){
   audioFrame(now);
   drawCorner(T, dt);
   const endO = 0;
-  const tradeIdx = SCENES.findIndex(q=>q.key==="trade");
-  const tradeLive = Math.abs(sp - tradeIdx) < .12;
-  if(tradeLive !== (tradeHit.dataset.live === "1")){
-    tradeHit.dataset.live = tradeLive ? "1" : "0";
-    tradeHit.style.pointerEvents = tradeLive ? "auto" : "none"; tradeHit.tabIndex = tradeLive ? 0 : -1;
-    if(tradeLive){
-      const sc2 = sets[lang][tradeIdx], a = sc2.titleBox, b = sc2.ctaBox || a;
-      const x0 = Math.min(a.x, b.x), y0 = a.y, x1 = Math.max(a.x + a.w, b.x + b.w), y1 = b.y + b.h;
-      Object.assign(tradeHit.style, {left:x0+"px", top:y0+"px", width:(x1-x0)+"px", height:(y1-y0)+"px", margin:"0"});
+  for(const [hitEl, key] of HITS){
+    const idx = SCENES.findIndex(q=>q.key===key), live = Math.abs(sp - idx) < .12;
+    if(live !== (hitEl.dataset.live === "1")){
+      hitEl.dataset.live = live ? "1" : "0";
+      hitEl.style.pointerEvents = live ? "auto" : "none"; hitEl.tabIndex = live ? 0 : -1;
+      if(live){
+        const sc2 = sets[lang][idx], a = sc2.titleBox, b = sc2.ctaBox || a;
+        const x0 = Math.min(a.x, b.x), y0 = a.y, x1 = Math.max(a.x + a.w, b.x + b.w), y1 = b.y + b.h;
+        Object.assign(hitEl.style, {left:x0+"px", top:y0+"px", width:(x1-x0)+"px", height:(y1-y0)+"px", margin:"0"});
+      }
     }
   }
   const linksLive = Math.abs(sp - (S-2)) < .12;
