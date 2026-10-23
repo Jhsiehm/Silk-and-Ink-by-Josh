@@ -117,31 +117,12 @@ html.reading canvas#scroll,html.reading #uigrain{opacity:0}
 }
 #read.on{visibility:visible;opacity:1;transition:opacity .9s ease .25s}
 /* text scrolling up under the corner buttons fades into a band of paper, like mist */
-#read::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(70px + env(safe-area-inset-top,0px));z-index:2;pointer-events:none;
-  background:linear-gradient(rgba(217,211,197,.97) 48%,rgba(217,211,197,0))}
-/* the wall: mounting silk, woven and mottled, darker toward the edges */
-#read{overflow-x:hidden;background-color:#D9D3C5;background-image:var(--tex-mount,none),radial-gradient(130% 100% at 50% 38%,transparent 48%,rgba(38,38,36,.17) 100%);
-  background-size:360px 360px,100% 100%}
-/* the sheet: fibrous paper hung between two rollers, unrolling downward as the page opens */
-#read .col{position:relative;z-index:1;box-sizing:border-box;width:min(660px,calc(100% - 22px));max-width:none;
-  margin:calc(clamp(70px,11vh,104px) + env(safe-area-inset-top,0px)) auto calc(72px + env(safe-area-inset-bottom,0px));
-  padding:clamp(40px,6vw,62px) clamp(20px,5.5vw,58px) clamp(44px,6vw,66px);
-  background-color:#ECE8DD;background-image:var(--tex-sheet,none),linear-gradient(90deg,rgba(38,38,36,.06),transparent 5%,transparent 95%,rgba(38,38,36,.06));
-  background-size:300px 300px,100% 100%;
-  box-shadow:0 1px 1px rgba(38,38,36,.1),0 18px 44px -14px rgba(38,38,36,.32),inset 0 0 0 1px rgba(38,38,36,.05),inset 0 0 38px rgba(120,108,88,.1)}
-#read .col::before,#read .col::after{content:"";position:absolute;left:-17px;right:-17px;height:12px;border-radius:6px;pointer-events:none;
-  background:linear-gradient(90deg,#191714 0 11px,transparent 11px calc(100% - 11px),#191714 calc(100% - 11px)),
-             linear-gradient(180deg,#5B534A 0%,#36312B 48%,#1F1C19 100%);
-  box-shadow:0 2px 5px rgba(20,18,16,.3)}
-#read .col::before{top:-7px}
-#read .col::after{bottom:-7px;height:15px;left:-22px;right:-22px;border-radius:7.5px}
-#read.on .col{animation:unroll 1.7s cubic-bezier(.33,.7,.18,1) both}
-@media (max-width:560px){
-  #read .col{width:calc(100% - 40px)}
-  #read .col::before{left:-10px;right:-10px}
-  #read .col::after{left:-14px;right:-14px}
-}
-@keyframes unroll{from{clip-path:inset(-24px -40px calc(100% - 8px) -40px)}to{clip-path:inset(-24px -40px -30px -40px)}}
+#read::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(74px + env(safe-area-inset-top,0px));z-index:2;pointer-events:none;
+  background:var(--tex-paper,none) 0 0/320px 320px,var(--paper);
+  -webkit-mask-image:linear-gradient(#000 52%,transparent);mask-image:linear-gradient(#000 52%,transparent)}
+/* the paper behind the page carries a little grain: fine speckle and the odd fibre, nothing more */
+#read{overflow-x:hidden;background-image:var(--tex-paper,none);background-size:320px 320px}
+#read .col{position:relative;z-index:1;max-width:600px;margin:0 auto;padding:calc(clamp(84px,13vh,132px) + env(safe-area-inset-top,0px)) 22px calc(96px + env(safe-area-inset-bottom,0px))}
 #r-name{font:italic 500 clamp(36px,6.4vw,48px)/1.08 var(--font-latin);margin:0 0 20px;color:var(--charcoal);letter-spacing:.003em}
 #r-scene{display:block;width:100%;aspect-ratio:2.5/1;margin:0 0 30px;
   -webkit-mask-image:radial-gradient(ellipse 76% 74% at 50% 52%,#000 56%,transparent 100%);
@@ -170,7 +151,7 @@ html.reading canvas#scroll,html.reading #uigrain{opacity:0}
 /* each line settles in like ink finding the paper */
 #read.on .ink{animation:inkIn 1.5s cubic-bezier(.2,.7,.2,1) both}
 @keyframes inkIn{from{opacity:0;filter:blur(6px);transform:translateY(7px)}to{opacity:1;filter:blur(0);transform:none}}
-@media (prefers-reduced-motion:reduce){ #read.on .ink,#read.on .col{animation:none} #read,#read.on{transition:none} }
+@media (prefers-reduced-motion:reduce){ #read.on .ink{animation:none} #read,#read.on{transition:none} }
 </style>
 
 <div id="ground" aria-hidden="true"></div>
@@ -1018,7 +999,7 @@ const readEl = document.getElementById("read"), rName = document.getElementById(
 const rLinks = document.getElementById("r-links"), rBack = document.getElementById("r-back"), btnRead = document.getElementById("btn-read");
 const rsCv = document.getElementById("r-scene"), rsx = rsCv.getContext("2d");
 let reading = false, readT0 = -1e9, RSD = null, rsInk = null, rsI = null, rsT0 = 0;
-// paper you can almost feel: speckle, fibres and mottling for the sheet; the same plus a fine weave for the silk mount
+// a little grain in the paper: speckle, a few fibres, the faintest mottling
 let texDone = false;
 function makeTex(size, o){
   const c = document.createElement("canvas"); c.width = c.height = size;
@@ -1047,7 +1028,7 @@ function makeTex(size, o){
     const x = r()*size, y = r()*size, L = size*(.012 + r()*.05), a = r()*Math.PI, light = r() < .35;
     const dx = Math.cos(a)*L, dy = Math.sin(a)*L, bend = (r() - .5)*L*.6;
     at(x, y, L + 4, (X,Y)=>{
-      g.strokeStyle = light ? `rgba(255,253,247,${.3 + r()*.3})` : `rgba(48,44,38,${(.05 + r()*.1)*o.ink})`;
+      g.strokeStyle = light ? `rgba(255,253,247,${(.3 + r()*.3)*(o.light ?? 1)})` : `rgba(48,44,38,${(.05 + r()*.1)*o.ink})`;
       g.lineWidth = (.6 + r()*.9)*size/600;
       g.beginPath(); g.moveTo(X, Y); g.quadraticCurveTo(X + dx*.5 - dy*bend/L, Y + dy*.5 + dx*bend/L, X + dx, Y + dy); g.stroke();
     });
@@ -1061,8 +1042,7 @@ function makeTex(size, o){
 }
 function makePaper(){
   if(texDone) return; texDone = true;
-  readEl.style.setProperty("--tex-mount", `url(${makeTex(720, {seed:11, blots:60, blotA:.11, weave:true, fibres:1700, specks:24000, ink:1.7})})`);
-  readEl.style.setProperty("--tex-sheet", `url(${makeTex(600, {seed:23, blots:34, blotA:.045, weave:false, fibres:700, specks:7000, ink:1})})`);
+  readEl.style.setProperty("--tex-paper", `url(${makeTex(640, {seed:23, blots:18, blotA:.025, weave:false, fibres:150, specks:6500, ink:.8, light:.45})})`);
 }
 function renderRead(){
   makePaper();
