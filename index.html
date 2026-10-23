@@ -1076,30 +1076,91 @@ rBack.addEventListener("click", ()=> setReading(false));
 addEventListener("keydown", e=>{ if(e.key === "Escape" && reading) setReading(false); });
 addEventListener("hashchange", ()=> setReading(location.hash === "#read"));
 
-// the scene: Huang Gongwang's Fuchun Mountains in grain, gathering out of the water and breathing
+// the scene: a band from one painting after another, each gathering out of the water, then flowing into the next
+const RSCENES = [
+  {map:"huang", crop:[0,0,1000,365]},        // Huang Gongwang, Dwelling in the Fuchun Mountains
+  {map:"litang", crop:[0,20,480,192]},       // Li Tang, Wind in Pines Among a Myriad Valleys
+  {map:"nizan", crop:[0,0,400,165]},         // Ni Zan, The Rongxi Studio: the far shore
+  {map:"fankuanLow", crop:[0,267,720,288]},  // Fan Kuan: rocks and the stream
+  {map:"guoxi", crop:[0,0,440,176]}          // Guo Xi, Early Spring: the peaks
+];
 function rsBuild(){
-  const m = density.huang; if(!m) return;
   const r = rsCv.getBoundingClientRect(); if(r.width < 10) return;
   const w = r.width, h = r.height, dpr = Math.min(2, devicePixelRatio||1);
   rsCv.width = Math.round(w*dpr); rsCv.height = Math.round(h*dpr); rsx.setTransform(dpr,0,0,dpr,0,0);
   rsInk = document.createElement("canvas"); rsInk.width = Math.ceil(w/2); rsInk.height = Math.ceil(h/2); rsI = rsInk.getContext("2d");
-  const pw = w*.97, ph = pw*m.h/m.w, x0 = (w - pw)/2, y0 = (h - ph)/2 + h*.03;
-  const n = innerWidth < 700 ? 2800 : 4600, rng = mulberry32(4242);
-  const nn = m.d.length, cdf = new Float32Array(nn); let acc = 0;
-  for(let q=0;q<nn;q++){ const v = m.d[q]; acc += v > .05 ? Math.pow(v, 1.45) : 0; cdf[q] = acc; }
-  const F = () => new Float32Array(n), sizeK = Math.max(.7, Math.min(1.2, pw/m.w*1.1));
-  const D = {n, w, h, pl:{x0, y0, pw, ph}, hx:F(), hy:F(), sx:F(), sy:F(), a:F(), s:F(), c:new Uint8Array(n), ph:F(), dr:F(), mg:F(),
-    ox:F(), oy:F(), vx:F(), vy:F(), fx:F(), fy:F(), fa:F(), fm:F()};
-  for(let i=0;i<n;i++){
-    const u = rng()*acc; let lo = 0, hi = nn-1;
-    while(lo<hi){ const mid=(lo+hi)>>1; if(cdf[mid]<u) lo=mid+1; else hi=mid; }
-    const ix = lo % m.w, iy = (lo/m.w)|0, v = m.d[lo];
-    D.hx[i] = x0 + (ix + rng())*pw/m.w; D.hy[i] = y0 + (iy + rng())*ph/m.h;
-    D.a[i] = Math.min(1, .32 + .95*Math.pow(v,.7)); D.s[i] = (.65 + v*1.05)*sizeK;
-    D.c[i] = v > .45 ? 0 : v > .2 ? 1 : 2; D.ph[i] = rng()*6.283; D.dr[i] = rng(); D.mg[i] = .35 + rng()*.65;
+  const n = innerWidth < 700 ? 4000 : 6500, rng = mulberry32(4242), F = () => new Float32Array(n);
+  const D = {n, w, h, scenes:[], from:-1, to:0, t0:0, dur:3.6, hold:10,
+    fx0:F(), fy0:F(), fa0:F(), fs0:F(), fc0:new Uint8Array(n), fx:F(), fy:F(), fa:F(), fs:F(), fc:new Uint8Array(n), fm:F(),
+    ph:F(), dr:F(), mg:F(), ox:F(), oy:F(), vx:F(), vy:F(), cranes:[], nextCrane:0};
+  for(let i=0;i<n;i++){ D.ph[i] = rng()*6.283; D.dr[i] = rng(); D.mg[i] = .35 + rng()*.65; }
+  for(const RS0 of RSCENES){
+    const m = density[RS0.map]; if(!m) continue;
+    const [cx, cy, cw, ch] = RS0.crop, sc = Math.min(w*.97/cw, h*.94/ch), pw = cw*sc, ph = ch*sc;
+    const x0 = (w - pw)/2, y0 = (h - ph)/2 + h*.02, sizeK = Math.max(.8, Math.min(1.05, sc*.95));
+    const cdf = new Float32Array(cw*ch); let acc = 0;
+    for(let yy=0, q=0; yy<ch; yy++) for(let xx=0; xx<cw; xx++, q++){ const v = m.d[(cy+yy)*m.w + cx + xx]; acc += v > .05 ? Math.pow(v, 1.4) : 0; cdf[q] = acc; }
+    const S1 = {map:RS0.map, crop:RS0.crop, pl:{x0, y0, pw, ph}, x:F(), y:F(), a:F(), s:F(), c:new Uint8Array(n)};
+    for(let i=0;i<n;i++){
+      const u = rng()*acc; let lo = 0, hi = cw*ch - 1;
+      while(lo<hi){ const mid=(lo+hi)>>1; if(cdf[mid]<u) lo=mid+1; else hi=mid; }
+      const ix = lo % cw, iy = (lo/cw)|0, v = m.d[(cy+iy)*m.w + cx + ix];
+      S1.x[i] = x0 + (ix + rng())*sc; S1.y[i] = y0 + (iy + rng())*sc;
+      // darker and clearer than before: every grain carries more ink
+      S1.a[i] = Math.min(1, .44 + 1.05*Math.pow(v,.6)); S1.s[i] = (.8 + v*1.2)*sizeK; S1.c[i] = v > .4 ? 0 : v > .18 ? 1 : 2;
+    }
+    D.scenes.push(S1);
   }
+  if(!D.scenes.length) return;
   RSD = D;
 }
+
+// cranes, after the cranes of Huizong's Auspicious Cranes: black neck, black trailing feathers, a white body
+// barely outlined, legs trailing; they beat their wings slowly and glide between beats
+let CP = null;
+function cranePts(){
+  const r = mulberry32(1112), P = [];
+  const add = (k, a, b, al) => { P.push(k, a, b, al); };
+  for(let i=0;i<70;i++){ const t = r()*6.283; add(0, Math.cos(t)*.15, -.004 + Math.sin(t)*.052, .62); }          // body outline
+  for(let i=0;i<26;i++){ const t = r()*6.283, q = Math.sqrt(r()); add(0, Math.cos(t)*.13*q, Math.sin(t)*.042*q, .18); }
+  for(let i=0;i<54;i++){ const t = r(), u = 1 - t;                                                              // the black neck
+    add(0, u*u*.12 + 2*u*t*.27 + t*t*.40 + (r()-.5)*.013, u*u*-.02 + 2*u*t*-.078 + t*t*-.05 + (r()-.5)*.022, .92); }
+  for(let i=0;i<16;i++){ const t = r()*6.283, q = Math.sqrt(r()); add(0, .418 + Math.cos(t)*.022*q, -.052 + Math.sin(t)*.019*q, .95); }
+  for(let i=0;i<12;i++){ const t = r(); add(0, .44 + t*.13, -.05 + t*.014, .6); }                                 // beak
+  for(let i=0;i<34;i++){ const t = r(), leg = i&1; add(0, -.13 - t*.37, .016 + leg*.016 + t*(.016 + leg*.012), .74); }
+  for(let i=0;i<22;i++) add(0, -.16 - r()*.1, -.012 + r()*.04, .9);                                               // dark tail plumes
+  for(const k of [1,2]) for(let i=0;i<130;i++){
+    const s = Math.pow(r(), .8), t = r();
+    add(k, s, t, (t > .56 ? .92 : t < .1 ? .6 : .14)*(k === 2 ? .5 : 1));
+  }
+  CP = Float32Array.from(P);
+}
+function craneDraw(cx, cy, L, f, phi, al){
+  if(!CP) cranePts();
+  for(let q=0;q<CP.length;q+=4){
+    const k = CP[q], a = CP[q+1], b = CP[q+2];
+    let lx = a, ly = b;
+    if(k > 0){
+      const far = k === 2, ph = far ? phi*.82 : phi, sx = far ? .05 : .03, sy = far ? -.047 : -.035;
+      const chord = .18*(1 - .5*a);
+      lx = sx + a*(-.15 - .07*Math.abs(ph)) - b*chord;
+      ly = sy + a*(-.52*ph) + b*chord*.18*ph;
+    }
+    rsx.globalAlpha = CP[q+3]*al;
+    rsx.fillRect(cx + f*lx*L, cy + ly*L, 1.05, 1.05);
+  }
+}
+function craneSpawn(D, now){
+  const f = Math.random() < .5 ? 1 : -1, k = 1 + (Math.random() < .65 ? 1 : 0) + (Math.random() < .3 ? 1 : 0);
+  const y0 = D.h*(.1 + Math.random()*.17), L0 = D.w*(.088 + Math.random()*.02), v = D.w/(9 + Math.random()*4);
+  for(let j=0;j<k;j++){
+    const L = L0*(1 - j*.12);
+    D.cranes.push({x: f > 0 ? -L*.7 - j*L*1.5 : D.w + L*.7 + j*L*1.5, y: y0 + (j ? (j&1 ? -1 : 1)*L*.45 : 0), L, f, v: v*(1 - j*.04),
+      ph: Math.random()*6.283, seed: Math.random()*99});
+  }
+  D.nextCrane = now + 9000 + Math.random()*9000;
+}
+
 // the links wear the ending's icons: pines, the empty pavilion, the fisherman, each a little living grain
 let RIC = [];
 function ricBuild(){
@@ -1161,18 +1222,34 @@ function rsOpen(){
   const r = rsCv.getBoundingClientRect();
   if(!RSD || Math.abs(r.width - RSD.w) > 2) rsBuild();
   if(!RSD) return;
-  const D = RSD;
-  for(let i=0;i<D.n;i++){ D.sx[i] = Math.random()*D.w*1.3 - D.w*.15; D.sy[i] = Math.random()*D.h*1.6 - D.h*.3; D.ox[i] = D.oy[i] = D.vx[i] = D.vy[i] = 0; }
+  const D = RSD, B = D.scenes[D.to];
+  for(let i=0;i<D.n;i++){
+    D.fx0[i] = Math.random()*D.w*1.3 - D.w*.15; D.fy0[i] = Math.random()*D.h*1.6 - D.h*.3;
+    D.fa0[i] = .05; D.fs0[i] = B.s[i]; D.fc0[i] = B.c[i]; D.ox[i] = D.oy[i] = D.vx[i] = D.vy[i] = 0;
+  }
+  D.from = -1; D.cranes = [];
   rsI.clearRect(0,0,rsInk.width,rsInk.height);
-  rsT0 = performance.now();
+  rsT0 = performance.now(); D.t0 = rsT0 + 250; D.nextCrane = rsT0 + 2600;
+}
+function rsWash(S1, k){
+  if(k <= .002) return;
+  const m = density[S1.map], c = S1.crop, P = S1.pl;
+  rsx.globalAlpha = .32*k; rsx.drawImage(m.soft, c[0], c[1], c[2], c[3], P.x0, P.y0, P.pw, P.ph);
+  rsx.globalAlpha = .3*k*k; rsx.drawImage(m.crisp, c[0], c[1], c[2], c[3], P.x0, P.y0, P.pw, P.ph);
 }
 function rsFrame(now){
   const D = RSD; if(!D) return;
-  const T = now/1000, g = reduce ? 1 : clamp01((now - rsT0 - 250)/3200), gE = ease(g), P = D.pl, m = density.huang;
+  const T = now/1000;
+  // after a while the scene lets go and flows into the next painting
+  if(!reduce && D.scenes.length > 1 && now - D.t0 > (D.dur + D.hold)*1000){
+    const A = D.scenes[D.to];
+    D.fx0.set(A.x); D.fy0.set(A.y); D.fa0.set(A.a); D.fs0.set(A.s); D.fc0.set(A.c);
+    D.from = D.to; D.to = (D.to + 1) % D.scenes.length; D.t0 = now;
+  }
+  const B = D.scenes[D.to], g = reduce ? 1 : clamp01((now - D.t0)/(D.dur*1000)), gE = ease(g);
   rsx.clearRect(0,0,D.w,D.h);
-  // the painting's own wash blooms underneath once the grain has found its place
-  rsx.globalAlpha = .24*gE; rsx.drawImage(m.soft, P.x0, P.y0, P.pw, P.ph);
-  rsx.globalAlpha = .2*gE*gE; rsx.drawImage(m.crisp, P.x0, P.y0, P.pw, P.ph);
+  if(D.from >= 0) rsWash(D.scenes[D.from], 1 - gE);
+  rsWash(B, gE);
   rsI.globalCompositeOperation = "destination-out"; rsI.globalAlpha = 1; rsI.fillStyle = "rgba(0,0,0,.07)";
   rsI.fillRect(0,0,rsInk.width,rsInk.height);
   rsI.globalCompositeOperation = "source-over"; rsI.fillStyle = "#34332F";
@@ -1181,13 +1258,14 @@ function rsFrame(now){
   const L = Math.min(D.w, D.h)*.55, RR = D.w < 420 ? 34 : 46, RR2 = RR*RR;
   for(let i=0;i<D.n;i++){
     const il = clamp01((g - D.dr[i]*.45)/.55), e = ease(il), sn = Math.sin(Math.PI*il);
-    let x = D.sx[i] + (D.hx[i] - D.sx[i])*e, y = D.sy[i] + (D.hy[i] - D.sy[i])*e;
+    let x = D.fx0[i] + (B.x[i] - D.fx0[i])*e, y = D.fy0[i] + (B.y[i] - D.fy0[i])*e;
     if(sn > .001){
       const lift = sn*L*D.mg[i];
       flow(x, y, T); const hx = x + FVX*lift*.5, hy = y + FVY*lift*.5;
       flow(hx, hy, T); x = hx + FVX*lift*.5; y = hy + FVY*lift*.5;
     }
-    if(!reduce){ const amp = .15 + (1 - Math.min(1, D.a[i]*2.5))*1.5; x += Math.sin(T*.4 + D.ph[i])*amp; y += Math.cos(T*.31 + D.ph[i]*1.7)*amp*.6; }
+    const a = D.fa0[i] + (B.a[i] - D.fa0[i])*e;
+    if(!reduce){ const amp = .15 + (1 - Math.min(1, a*2.5))*1.5; x += Math.sin(T*.4 + D.ph[i])*amp; y += Math.cos(T*.31 + D.ph[i]*1.7)*amp*.6; }
     let vx = D.vx[i], vy = D.vy[i];
     if(hasP){
       const dx = x + D.ox[i] - px, dy = y + D.oy[i] - py, d2 = dx*dx + dy*dy;
@@ -1198,15 +1276,33 @@ function rsFrame(now){
     const disp = Math.abs(D.ox[i]) + Math.abs(D.oy[i]);
     x += D.ox[i]; y += D.oy[i];
     const mm = Math.max(sn, Math.min(1, disp/28));
-    D.fx[i] = x; D.fy[i] = y; D.fm[i] = mm; D.fa[i] = (.06 + (D.a[i] - .06)*Math.min(1, e*1.4))*(1 - .55*mm);
-    if(mm > .04){ const z = 1.1*(1 + 1.6*mm); rsI.globalAlpha = D.a[i]*mm*.14; rsI.fillRect(x*.5 - z*.5, y*.5 - z*.5, z, z); }
+    D.fx[i] = x; D.fy[i] = y; D.fm[i] = mm; D.fa[i] = a*(1 - .5*mm);
+    D.fs[i] = D.fs0[i] + (B.s[i] - D.fs0[i])*e; D.fc[i] = e < .5 ? D.fc0[i] : B.c[i];
+    if(mm > .04){ const z = 1.1*(1 + 1.6*mm); rsI.globalAlpha = a*mm*.12; rsI.fillRect(x*.5 - z*.5, y*.5 - z*.5, z, z); }
   }
-  rsx.globalAlpha = .85; rsx.drawImage(rsInk, 0, 0, D.w, D.h);
+  rsx.globalAlpha = .88; rsx.drawImage(rsInk, 0, 0, D.w, D.h);
   for(let tone=0; tone<3; tone++){
     rsx.fillStyle = TONES[tone];
     for(let i=0;i<D.n;i++){
-      if(D.c[i] !== tone || D.fa[i] < .01) continue;
-      rsx.globalAlpha = D.fa[i]; rsx.fillRect(D.fx[i], D.fy[i], D.s[i], D.s[i]);
+      if(D.fc[i] !== tone || D.fa[i] < .01) continue;
+      rsx.globalAlpha = D.fa[i]; rsx.fillRect(D.fx[i], D.fy[i], D.fs[i], D.fs[i]);
+    }
+  }
+  // the cranes cross now and then, in ones, twos and threes
+  if(!reduce){
+    if(now > D.nextCrane && now - rsT0 > 2000) craneSpawn(D, now);
+    const dts = Math.min(.05, (now - (D.lastNow || now))/1000); D.lastNow = now;
+    rsx.fillStyle = TONES[0];
+    for(let j=D.cranes.length-1; j>=0; j--){
+      const c = D.cranes[j];
+      c.x += c.f*c.v*dts;
+      const beat = .55 + .45*Math.sin(T*.35 + c.seed);                     // stretches of beating, stretches of gliding
+      c.ph += dts*(2.6 + 1.6*beat);
+      const phi = .14 + beat*.85*Math.sin(c.ph);
+      const y = c.y + Math.sin(T*.7 + c.seed)*D.h*.025 - phi*c.L*.05;
+      const edge = clamp01(Math.min(c.x + c.L, D.w + c.L - c.x)/(c.L*1.6));
+      craneDraw(c.x, y, c.L, c.f, phi, edge*Math.min(1, (now - rsT0)/2500));
+      if((c.f > 0 && c.x > D.w + c.L*1.2) || (c.f < 0 && c.x < -c.L*1.2)) D.cranes.splice(j, 1);
     }
   }
   rsx.globalAlpha = 1;
