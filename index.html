@@ -194,7 +194,6 @@ const COPY = {
     testimony: ["Testified before the New Jersey Senate", "Education Committee"],
     idsa: ["IDSA + Design at GW", "Partnerships and founder events"],
     memory: ["Memory After Empire", "Under review"],
-    honors: ["Palantir AIP Builder", "Anthropic, Claude API"],
     hint: "scroll",
     hintTouch: "swipe up"
   },
@@ -205,7 +204,6 @@ const COPY = {
     testimony: ["曾於新澤西州參議院作證", "教育委員會"],
     idsa: ["IDSA + Design，GW", "合作夥伴與創辦人活動"],
     memory: ["Memory After Empire", "審閱中"],
-    honors: ["Palantir AIP 建構者認證", "Anthropic Claude API"],
     hint: "捲動",
     hintTouch: "上滑"
   }
@@ -223,7 +221,7 @@ const READ = {
       `I study International Affairs at <a href="${GWU}"${ext}>The George Washington University</a>.`,
       `I’m building <a href="${TSI}"${ext}>TradeSimple Intel</a>, a way to backtest political signals against market history.`,
       `I work on Special Projects at Statecraft, which brings AI to federal agencies. I’ve testified before the New Jersey Senate Education Committee, and I work on partnerships and founder events for IDSA + Design at GW.`,
-      `<i>Memory After Empire</i> is under review. I’m a certified Palantir AIP Builder, and I build with Anthropic’s Claude API.`
+      `<i>Memory After Empire</i> is under review.`
     ],
     coda: "Raised in New Jersey. Shaped in Taipei. Collating in Washington.",
     links: ["linkedin", "substack", "github", "email"]
@@ -234,7 +232,7 @@ const READ = {
       `就讀於<a href="${GWU}"${ext}>喬治華盛頓大學</a>國際事務。`,
       `正在打造 <a href="${TSI}"${ext}>TradeSimple Intel</a>，以政治訊號回測市場歷史。`,
       `於 Statecraft 負責特別專案，為聯邦機構提供 AI 服務。曾於新澤西州參議院教育委員會作證，並在 IDSA + Design，GW 負責合作夥伴與創辦人活動。`,
-      `《Memory After Empire》審閱中。持有 Palantir AIP 建構者認證，並以 Anthropic Claude API 進行開發。`
+      `《Memory After Empire》審閱中。`
     ],
     coda: "在新澤西長大，在台北成形，在華盛頓校勘。",
     links: ["LinkedIn", "Substack", "GitHub", "電子郵件"]
@@ -259,7 +257,6 @@ const SCENES = [
   {type:"art", map:"huang", cx:.5, fit:"w", scale:.98, cam:"level", label:"平遠",
    credit:{en:"Huang Gongwang, Dwelling in the Fuchun Mountains (detail), 1350", zh:"黃公望《富春山居圖》局部 一三五〇年"}},
   {type:"text", key:"idsa", seed:23},
-  {type:"text", key:"honors", seed:13},
   {type:"art", map:"fankuanLow", cx:.7, fit:"h", scale:.92, cam:"level", label:"行旅",
    credit:{en:"Fan Kuan, Travelers Among Mountains and Streams (detail)", zh:"范寬《谿山行旅圖》局部"}},
   {type:"comp", key:"quote", seed:41},
@@ -863,7 +860,7 @@ function setLang(l){
   if(reading) renderRead();
   const c = COPY[l];
   srEl.lang = l==="zh" ? "zh-Hant" : "en";
-  srEl.innerHTML = ["name","trade","memory","state","testimony","idsa","honors"].map(k=>`<p>${c[k][0]}. ${c[k][1]}.</p>`).join("");
+  srEl.innerHTML = ["name","trade","memory","state","testimony","idsa"].map(k=>`<p>${c[k][0]}. ${c[k][1]}.</p>`).join("");
   plateScene = -1;
   tradeHit.dataset.live = "";
   const E = ENDC[l];
