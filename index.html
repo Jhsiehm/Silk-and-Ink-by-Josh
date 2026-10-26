@@ -122,12 +122,12 @@ html.reading canvas#scroll,html.reading #uigrain{opacity:0}
   -webkit-mask-image:linear-gradient(#000 52%,transparent);mask-image:linear-gradient(#000 52%,transparent)}
 /* the paper behind the page carries a little grain: fine speckle and the odd fibre, nothing more */
 #read{overflow-x:hidden;background-image:var(--tex-paper,none);background-size:320px 320px}
-#read{--k:1}
-#read .col{position:relative;z-index:1;max-width:640px;margin:0 auto;
+#read{--k:1;--ks:1}
+#read .col{position:relative;z-index:1;max-width:680px;margin:0 auto;
   padding:calc(clamp(58px,9.5vh,104px)*var(--k) + env(safe-area-inset-top,0px)) 22px calc(clamp(20px,4vh,44px)*var(--k) + env(safe-area-inset-bottom,0px))}
 .r-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 18px;margin:0 0 calc(10px*var(--k))}
 #r-name{font:italic 500 calc(clamp(32px,5.4vh,46px)*var(--k))/1.08 var(--font-latin);margin:0;color:var(--charcoal);letter-spacing:.003em}
-#r-scene{display:block;width:100%;height:calc(clamp(100px,22vh,232px)*var(--k));margin:0 0 calc(16px*var(--k));
+#r-scene{display:block;width:calc(100%*var(--ks));aspect-ratio:2.5/1;height:auto;margin:0 auto calc(16px*var(--k));
   -webkit-mask-image:radial-gradient(ellipse 76% 74% at 50% 52%,#000 56%,transparent 100%);
   mask-image:radial-gradient(ellipse 76% 74% at 50% 52%,#000 56%,transparent 100%)}
 #r-body p{font:500 calc(clamp(16px,2.35vh,19.5px)*var(--k))/1.5 var(--font-latin);color:var(--charcoal);margin:0 0 .6em}
@@ -153,7 +153,7 @@ html.reading canvas#scroll,html.reading #uigrain{opacity:0}
 #read[data-l="zh"] #r-back{font:500 13.5px var(--font-han);letter-spacing:.3em}
 @media (max-width:560px){
   #read .col{padding-top:calc(66px*var(--k) + env(safe-area-inset-top,0px))}
-  #r-scene{height:calc(clamp(90px,16vh,150px)*var(--k));margin-bottom:calc(12px*var(--k))}
+  #r-scene{margin-bottom:calc(12px*var(--k))}
 }
 /* each line settles in like ink finding the paper */
 #read.on .ink{animation:inkIn 1.5s cubic-bezier(.2,.7,.2,1) both}
@@ -1048,13 +1048,14 @@ function makePaper(){
   if(texDone) return; texDone = true;
   readEl.style.setProperty("--tex-paper", `url(${makeTex(640, {seed:23, blots:18, blotA:.025, weave:false, fibres:150, specks:6500, ink:.8, light:.45})})`);
 }
-// everything on one screen: shrink the type and the scene together, a little at a time, until nothing needs scrolling
-// (a phone keeps readable type and may scroll a touch)
+// everything on one screen: the scene gives a little first, then the type, until nothing needs scrolling
 function fitRead(){
-  let k = 1; readEl.style.setProperty("--k", "1");
+  let k = 1, ks = 1; readEl.style.setProperty("--k", "1"); readEl.style.setProperty("--ks", "1");
   const floor = innerWidth < 560 ? .86 : .72;
-  for(let q=0; q<12 && readEl.scrollHeight > readEl.clientHeight + 1 && k > floor; q++){
-    k -= .025; readEl.style.setProperty("--k", k.toFixed(3));
+  for(let q=0; q<24 && readEl.scrollHeight > readEl.clientHeight + 1; q++){
+    if(ks > .78){ ks -= .03; readEl.style.setProperty("--ks", ks.toFixed(3)); }
+    else if(k > floor){ k -= .025; readEl.style.setProperty("--k", k.toFixed(3)); }
+    else break;
   }
 }
 function renderRead(){
@@ -1107,7 +1108,7 @@ function rsBuild(){
   const w = r.width, h = r.height, dpr = Math.min(2, devicePixelRatio||1);
   rsCv.width = Math.round(w*dpr); rsCv.height = Math.round(h*dpr); rsx.setTransform(dpr,0,0,dpr,0,0);
   rsInk = document.createElement("canvas"); rsInk.width = Math.ceil(w/2); rsInk.height = Math.ceil(h/2); rsI = rsInk.getContext("2d");
-  const n = innerWidth < 700 ? 4000 : 6500, rng = mulberry32(4242), F = () => new Float32Array(n);
+  const n = innerWidth < 700 ? 7000 : 13000, rng = mulberry32(4242), F = () => new Float32Array(n);
   const D = {n, w, h, scenes:[], from:-1, to:0, t0:0, dur:3.6, hold:10,
     fx0:F(), fy0:F(), fa0:F(), fs0:F(), fc0:new Uint8Array(n), fx:F(), fy:F(), fa:F(), fs:F(), fc:new Uint8Array(n), fm:F(),
     ph:F(), dr:F(), mg:F(), ox:F(), oy:F(), vx:F(), vy:F(), cranes:[], nextCrane:0};
@@ -1115,7 +1116,7 @@ function rsBuild(){
   for(const RS0 of RSCENES){
     const m = density[RS0.map]; if(!m) continue;
     const [cx, cy, cw, ch] = RS0.crop, sc = Math.min(w*.97/cw, h*.94/ch), pw = cw*sc, ph = ch*sc;
-    const x0 = (w - pw)/2, y0 = (h - ph)/2 + h*.02, sizeK = Math.max(.8, Math.min(1.05, sc*.95));
+    const x0 = (w - pw)/2, y0 = (h - ph)/2 + h*.02, sizeK = Math.max(.7, Math.min(1, sc*.9));
     const cdf = new Float32Array(cw*ch); let acc = 0;
     for(let yy=0, q=0; yy<ch; yy++) for(let xx=0; xx<cw; xx++, q++){ const v = m.d[(cy+yy)*m.w + cx + xx]; acc += v > .05 ? Math.pow(v, 1.4) : 0; cdf[q] = acc; }
     const S1 = {map:RS0.map, crop:RS0.crop, pl:{x0, y0, pw, ph}, x:F(), y:F(), a:F(), s:F(), c:new Uint8Array(n)};
@@ -1125,7 +1126,7 @@ function rsBuild(){
       const ix = lo % cw, iy = (lo/cw)|0, v = m.d[(cy+iy)*m.w + cx + ix];
       S1.x[i] = x0 + (ix + rng())*sc; S1.y[i] = y0 + (iy + rng())*sc;
       // darker and clearer than before: every grain carries more ink
-      S1.a[i] = Math.min(1, .44 + 1.05*Math.pow(v,.6)); S1.s[i] = (.8 + v*1.2)*sizeK; S1.c[i] = v > .4 ? 0 : v > .18 ? 1 : 2;
+      S1.a[i] = Math.min(1, .4 + 1.0*Math.pow(v,.6)); S1.s[i] = (.6 + v*1.0)*sizeK; S1.c[i] = v > .4 ? 0 : v > .18 ? 1 : 2;
     }
     D.scenes.push(S1);
   }
@@ -1252,8 +1253,8 @@ function rsOpen(){
 function rsWash(S1, k){
   if(k <= .002) return;
   const m = density[S1.map], c = S1.crop, P = S1.pl;
-  rsx.globalAlpha = .32*k; rsx.drawImage(m.soft, c[0], c[1], c[2], c[3], P.x0, P.y0, P.pw, P.ph);
-  rsx.globalAlpha = .3*k*k; rsx.drawImage(m.crisp, c[0], c[1], c[2], c[3], P.x0, P.y0, P.pw, P.ph);
+  rsx.globalAlpha = Math.pow(k, 1.1)*.62; rsx.drawImage(m.soft, c[0], c[1], c[2], c[3], P.x0, P.y0, P.pw, P.ph);
+  rsx.globalAlpha = Math.pow(k, 1.6)*.7; rsx.drawImage(m.crisp, c[0], c[1], c[2], c[3], P.x0, P.y0, P.pw, P.ph);
 }
 function rsFrame(now){
   const D = RSD; if(!D) return;
